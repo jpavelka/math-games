@@ -34,5 +34,19 @@ export const games: Game[] = [
 		description: 'Follow the chain of operations and fill in every blank square to solve the puzzle.',
 		category: 'Arithmetic',
 		route: '/games/snake'
+	},
+	{
+		slug: 'kakooma',
+		title: 'Kakooma',
+		description: 'Find the one number in each grid that is the sum or product of two others. Solve all 8 grids to unlock the final puzzle.',
+		category: 'Arithmetic',
+		route: '/games/kakooma'
+	},
+	{
+		slug: 'equato',
+		title: 'Equato',
+		description: 'Place each number from the bank exactly once so that every row and column forms a valid equation.',
+		category: 'Arithmetic',
+		route: '/games/equato'
 	}
 ];
