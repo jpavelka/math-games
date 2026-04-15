@@ -59,5 +59,12 @@ export const games: Game[] = [
 		description: 'Place each number from the bank exactly once so that every row and column forms a valid equation.',
 		categories: ['Arithmetic', 'Logic'],
 		route: '/games/equato'
+	},
+	{
+		slug: 'paren-placer',
+		title: 'Paren Placer',
+		description: 'Add parentheses to an arithmetic formula to make it correct. Navigate your way to the target value!',
+		categories: ['Arithmetic'],
+		route: '/games/paren-placer'
 	}
 ];
