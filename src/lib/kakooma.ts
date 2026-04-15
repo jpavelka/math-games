@@ -113,7 +113,11 @@ function generateSubGrid(op: Operator, forcedNumbers?: number[]): SubGrid {
 		if (countValid(allNums, op) !== 1) continue;
 
 		const answerIndex = allNums.indexOf(a);
-		const sourceIndices: [number, number] = [allNums.indexOf(b), allNums.indexOf(c)];
+		const firstSourceIdx = allNums.indexOf(b);
+		const secondSourceIdx = b === c
+			? allNums.indexOf(c, firstSourceIdx + 1)
+			: allNums.indexOf(c);
+		const sourceIndices: [number, number] = [firstSourceIdx, secondSourceIdx];
 		return { numbers: allNums, operator: op, answerIndex, sourceIndices };
 	}
 

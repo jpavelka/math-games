@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { games, type Game } from '$lib/games';
+	import { games, type Category } from '$lib/games';
 	import { base } from '$app/paths';
 
 	let query = $state('');
 
-	const categoryColors: Record<Game['category'], string> = {
+	const categoryColors: Record<Category, string> = {
 		Arithmetic: 'tag-arithmetic',
 		Logic: 'tag-logic',
 		'Number Theory': 'tag-number-theory',
@@ -14,12 +14,15 @@
 	const filtered = $derived(
 		query.trim() === ''
 			? games
-			: games.filter(
-					(g) =>
-						g.title.toLowerCase().includes(query.toLowerCase()) ||
-						g.description.toLowerCase().includes(query.toLowerCase()) ||
-						g.category.toLowerCase().includes(query.toLowerCase())
-				)
+			: games.filter((g) => {
+					const q = query.toLowerCase();
+					return (
+						g.title.toLowerCase().includes(q) ||
+						g.description.toLowerCase().includes(q) ||
+						g.categories.some((c) => c.toLowerCase().includes(q)) ||
+						(g.otherNames?.some((n) => n.toLowerCase().includes(q)) ?? false)
+					);
+				})
 	);
 </script>
 
@@ -49,7 +52,11 @@
 		{#each filtered as game (game.slug)}
 			<li>
 				<a href="{base}{game.route}" class="card">
-					<span class="card-tag {categoryColors[game.category]}">{game.category}</span>
+					<div class="card-tags">
+						{#each game.categories as cat}
+							<span class="card-tag {categoryColors[cat]}">{cat}</span>
+						{/each}
+					</div>
 					<h2>{game.title}</h2>
 					<p>{game.description}</p>
 					<span class="card-cta">Play →</span>
@@ -160,6 +167,12 @@
 		font-weight: 600;
 		color: var(--color-accent);
 		margin-top: 0.5rem;
+	}
+
+	.card-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
 	}
 
 	.card-tag {

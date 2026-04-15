@@ -117,7 +117,7 @@
 	main {
 		max-width: 1000px;
 		margin: 0 auto;
-		padding: 2rem 1.5rem 4rem;
+		padding: 1rem 1.5rem 1.5rem;
 		transition: padding-right 0.25s ease;
 	}
 
@@ -130,7 +130,7 @@
 
 	footer {
 		text-align: center;
-		padding: 2rem;
+		padding: 1rem;
 		color: var(--color-text-muted);
 		font-size: 0.85rem;
 		border-top: 1px solid var(--color-border);
