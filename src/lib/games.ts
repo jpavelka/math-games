@@ -67,5 +67,12 @@ export const games: Game[] = [
 		categories: ['Logic', 'Combinatorics'],
 		otherNames: ['traveling salesman', 'TSP'],
 		route: '/games/road-trip'
+	},
+	{
+		slug: 'paren-placer',
+		title: 'Paren Placer',
+		description: 'Add parentheses to an arithmetic formula to make it correct. Navigate your way to the target value!',
+		categories: ['Arithmetic'],
+		route: '/games/paren-placer'
 	}
 ];
