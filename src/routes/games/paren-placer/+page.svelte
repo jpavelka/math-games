@@ -5,8 +5,16 @@
 	type Phase = 'idle' | 'playing' | 'done';
 
 	let phase = $state<Phase>('idle');
-	let puzzle = $state(generatePuzzle());
+	
+	// Settings
+	let minOperands = $state(3);
+	let maxOperands = $state(5);
+	const MIN_OPTIONS = [3, 4, 5, 6];
+	const MAX_OPTIONS = [3, 4, 5, 6, 7, 8];
+
+	let puzzle = $state(generatePuzzle(minOperands, maxOperands));
 	let userParens = $state<[number, number][]>([]); // indices of numbers that are wrapped
+	let history = $state<[number, number][][]>([]); 
 	let score = $state(0);
 	let questionIndex = $state(0);
 	const TOTAL = 10;
@@ -21,8 +29,11 @@
 	}
 
 	function nextPuzzle() {
-		puzzle = generatePuzzle();
+		if (minOperands > maxOperands) minOperands = maxOperands;
+		
+		puzzle = generatePuzzle(minOperands, maxOperands);
 		userParens = [];
+		history = []; // <-- Reset history on new puzzle
 		firstSelectedIndex = null;
 	}
 
@@ -33,6 +44,10 @@
 			const start = Math.min(firstSelectedIndex, index);
 			const end = Math.max(firstSelectedIndex, index);
 			if (start !== end) {
+				// SAVE STATE TO HISTORY BEFORE MUTATING
+				// We use [...userParens] to create a shallow copy of the array
+				history.push([...userParens]);
+
 				// Toggle this paren pair
 				const existingIndex = userParens.findIndex(p => p[0] === start && p[1] === end);
 				if (existingIndex !== -1) {
@@ -46,8 +61,26 @@
 	}
 
 	function clearParens() {
+		if (userParens.length > 0) {
+			// Save state so the user can undo an accidental clear!
+			history.push([...userParens]);
+		}
 		userParens = [];
 		firstSelectedIndex = null;
+	}
+
+	function undo() {
+		// If the user has selected one number but hasn't finished the pair,
+		// undo should just cancel that selection.
+		if (firstSelectedIndex !== null) {
+			firstSelectedIndex = null;
+			return;
+		}
+
+		// Otherwise, restore the previous state from history
+		if (history.length > 0) {
+			userParens = history.pop()!;
+		}
 	}
 
 	function getNumberIndex(tokenIndex: number): number {
@@ -87,14 +120,9 @@
 	});
 
 	function evaluateUserExpression(): number {
-		// This is tricky. We need to evaluate with the user's parentheses.
-		// A simple way is to build a string and use a real parser, or just implement one.
-		// Let's use a simple recursive approach.
-		
 		const tokens = puzzle.tokens;
 		const numCount = tokens.filter(t => typeof t === 'number').length;
 		
-		// Build an array of tokens including parentheses
 		let flat: (number | Op | '(' | ')')[] = [];
 		const openParens = new Array(numCount).fill(0);
 		const closeParens = new Array(numCount).fill(0);
@@ -124,7 +152,6 @@
 	}
 
 	function parseAndEval(tokens: (number | Op | '(' | ')')[]): number {
-		// Basic shunting-yard or recursive descent
 		let i = 0;
 		function parseExpr(): number {
 			let ops: (number | Op)[] = [];
@@ -161,6 +188,21 @@
 			// Wrong answer feedback?
 		}
 	}
+
+	function setMin(v: number) { 
+		minOperands = v; 
+		if (minOperands > maxOperands) maxOperands = minOperands;
+	}
+	function setMax(v: number) { 
+		maxOperands = v; 
+		if (maxOperands < minOperands) minOperands = maxOperands;
+	}
+
+	function restartToSetup() {
+		if (confirm("Are you sure you want to restart? Your current progress will be lost.")) {
+			phase = 'idle';
+		}
+	}
 </script>
 
 <svelte:head>
@@ -173,6 +215,26 @@
 
 	{#if phase === 'idle'}
 		<p class="desc">Add parentheses to make the equation true. Click two numbers to wrap them and everything in between in parentheses.</p>
+
+		<div class="settings">
+			<div class="setting-row">
+				<span class="setting-label">Min numbers</span>
+				<div class="toggle-group">
+					{#each MIN_OPTIONS as v}
+						<button class="tog-btn" class:active={minOperands === v} onclick={() => setMin(v)}>{v}</button>
+					{/each}
+				</div>
+			</div>
+			<div class="setting-row">
+				<span class="setting-label">Max numbers</span>
+				<div class="toggle-group">
+					{#each MAX_OPTIONS as v}
+						<button class="tog-btn" class:active={maxOperands === v} onclick={() => setMax(v)}>{v}</button>
+					{/each}
+				</div>
+			</div>
+		</div>
+
 		<div class="center">
 			<button class="btn large" onclick={startGame}>Start Game</button>
 		</div>
@@ -205,6 +267,14 @@
 			</div>
 
 			<div class="actions">
+				<button class="btn secondary" style="margin-right: auto;" onclick={restartToSetup}>Restart</button>
+				<button 
+					class="btn secondary" 
+					onclick={undo} 
+					disabled={history.length === 0 && firstSelectedIndex === null}
+				>
+					Undo
+				</button>
 				<button class="btn secondary" onclick={clearParens}>Clear</button>
 				<button class="btn" disabled={currentUserValue !== puzzle.target} onclick={submit}>Submit</button>
 			</div>
@@ -214,8 +284,10 @@
 		<div class="result-card">
 			<h2>Game Over!</h2>
 			<p class="final-score">You scored {score} / {TOTAL}</p>
-			<button class="btn large" onclick={startGame}>Play Again</button>
-			<a href="{base}/" class="btn large secondary">Exit</a>
+			<div class="result-actions">
+				<button class="btn large" onclick={startGame}>Play Again</button>
+				<button class="btn large btn-secondary" onclick={() => (phase = 'idle')}>Settings</button>
+			</div>
 		</div>
 	{/if}
 </div>
@@ -364,5 +436,73 @@
 	.final-score {
 		font-size: 2rem;
 		margin: 2rem 0;
+	}
+
+	/* Settings */
+	.settings {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		padding: 1.1rem 1.25rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.85rem;
+		margin-bottom: 1.75rem;
+	}
+
+	.setting-row {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.setting-label {
+		font-size: 0.82rem;
+		color: var(--color-text-muted);
+		font-weight: 600;
+		min-width: 7rem;
+	}
+
+	.toggle-group {
+		display: flex;
+		gap: 0.35rem;
+		flex-wrap: wrap;
+	}
+
+	.tog-btn {
+		padding: 0.3rem 0.75rem;
+		background: var(--color-surface-2);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		color: var(--color-text-muted);
+		font-size: 0.9rem;
+		font-weight: 700;
+		min-width: 2.4rem;
+		text-align: center;
+		transition: background 0.15s, border-color 0.15s, color 0.15s;
+	}
+
+	.tog-btn:hover:not(.active) {
+		border-color: var(--color-accent);
+		color: var(--color-text);
+	}
+
+	.tog-btn.active {
+		background: var(--color-accent);
+		border-color: var(--color-accent);
+		color: #fff;
+	}
+
+	.result-actions {
+		display: flex;
+		gap: 0.75rem;
+		justify-content: center;
+	}
+
+	.btn-secondary {
+		background: var(--color-surface-2);
+		color: var(--color-text);
+		border: 1px solid var(--color-border);
 	}
 </style>

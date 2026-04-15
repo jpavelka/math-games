@@ -367,7 +367,7 @@
 	<p class="desc">
 		You're heading into the backcountry with a weight-limited pack.
 		Every item has a fixed weight and a randomly assigned value.
-		Choose the combination that maximises your total value without
+		Choose the combination that maximizes your total value without
 		exceeding the limit — then see how close you were to optimal.
 	</p>
 
