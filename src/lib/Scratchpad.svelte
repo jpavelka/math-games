@@ -45,6 +45,10 @@
 	let panning = $state(false);
 	let panOrigin: { px: number; py: number; ox: number; oy: number } | null = null;
 
+	// Multi-touch tracking for two-finger pan
+	const pointerPositions = new Map<number, { x: number; y: number }>();
+	let twoFingerOrigin: { midX: number; midY: number; ox: number; oy: number } | null = null;
+
 	let canvasEl = $state<HTMLCanvasElement | null>(null);
 	let wrapperEl = $state<HTMLDivElement | null>(null);
 	let dpr = 1;
@@ -121,18 +125,44 @@
 	function onPointerDown(e: PointerEvent) {
 		e.preventDefault();
 		canvasEl!.setPointerCapture(e.pointerId);
-		if (tool === 'pan') {
-			panning = true;
-			panOrigin = { px: e.clientX, py: e.clientY, ox: offsetX, oy: offsetY };
+		pointerPositions.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+		if (pointerPositions.size >= 2) {
+			// Second finger — abort any single-finger action and start two-finger pan
+			activeStroke = null;
+			panOrigin = null;
+			panning = false;
+			const pts = [...pointerPositions.values()];
+			twoFingerOrigin = {
+				midX: (pts[0].x + pts[1].x) / 2,
+				midY: (pts[0].y + pts[1].y) / 2,
+				ox: offsetX,
+				oy: offsetY
+			};
 		} else {
-			activeStroke = { points: [getPos(e)], color: penColor, width: penWidth };
-			redraw();
+			twoFingerOrigin = null;
+			if (tool === 'pan') {
+				panning = true;
+				panOrigin = { px: e.clientX, py: e.clientY, ox: offsetX, oy: offsetY };
+			} else {
+				activeStroke = { points: [getPos(e)], color: penColor, width: penWidth };
+				redraw();
+			}
 		}
 	}
 
 	function onPointerMove(e: PointerEvent) {
 		e.preventDefault();
-		if (tool === 'pan' && panOrigin) {
+		pointerPositions.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+		if (twoFingerOrigin && pointerPositions.size >= 2) {
+			const pts = [...pointerPositions.values()];
+			const midX = (pts[0].x + pts[1].x) / 2;
+			const midY = (pts[0].y + pts[1].y) / 2;
+			offsetX = twoFingerOrigin.ox - (midX - twoFingerOrigin.midX);
+			offsetY = twoFingerOrigin.oy - (midY - twoFingerOrigin.midY);
+			redraw();
+		} else if (tool === 'pan' && panOrigin) {
 			offsetX = panOrigin.ox - (e.clientX - panOrigin.px);
 			offsetY = panOrigin.oy - (e.clientY - panOrigin.py);
 			redraw();
@@ -142,14 +172,36 @@
 		}
 	}
 
-	function onPointerUp() {
-		if (tool === 'pan') {
-			panning = false;
-			panOrigin = null;
-		} else if (activeStroke) {
-			strokes = [...strokes, activeStroke];
-			activeStroke = null;
+	function onPointerUp(e: PointerEvent) {
+		pointerPositions.delete(e.pointerId);
+
+		if (pointerPositions.size < 2) {
+			twoFingerOrigin = null;
 		}
+
+		if (pointerPositions.size === 0) {
+			if (tool === 'pan') {
+				panning = false;
+				panOrigin = null;
+			} else if (activeStroke) {
+				strokes = [...strokes, activeStroke];
+				activeStroke = null;
+			}
+		} else {
+			// One finger still down after two-finger gesture — reset cleanly
+			// to avoid accidental strokes or pan jumps
+			activeStroke = null;
+			panOrigin = null;
+			panning = false;
+		}
+	}
+
+	function onPointerCancel(e: PointerEvent) {
+		pointerPositions.delete(e.pointerId);
+		twoFingerOrigin = null;
+		activeStroke = null;
+		panOrigin = null;
+		panning = false;
 	}
 
 	function undo() {
@@ -172,7 +224,9 @@
 		onpointermove={onResizeMove}
 		onpointerup={onResizeEnd}
 		aria-hidden="true"
-	></div>
+	>
+		<div class="resize-grip"></div>
+	</div>
 	<!-- header -->
 	<div class="panel-header">
 		<div class="tabs">
@@ -261,6 +315,7 @@
 				onpointerdown={onPointerDown}
 				onpointermove={onPointerMove}
 				onpointerup={onPointerUp}
+				onpointercancel={onPointerCancel}
 			></canvas>
 		</div>
 	{/if}
@@ -286,16 +341,26 @@
 		left: 0;
 		top: 0;
 		bottom: 0;
-		width: 5px;
+		width: 20px;
 		cursor: col-resize;
 		z-index: 1;
-		transition: background 0.15s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.resize-handle:hover,
-	.panel.resizing .resize-handle {
+	.resize-grip {
+		width: 4px;
+		height: 40px;
+		border-radius: 2px;
+		background: var(--color-border);
+		transition: background 0.15s, transform 0.15s;
+	}
+
+	.resize-handle:hover .resize-grip,
+	.panel.resizing .resize-grip {
 		background: var(--color-accent);
-		opacity: 0.5;
+		transform: scaleX(1.5);
 	}
 
 	/* Prevent text selection and cursor flicker while dragging */

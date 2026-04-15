@@ -115,9 +115,15 @@ function selectBlanks(grid: number[][]): [number, number][] | null {
 	}
 	if (byVal.size < 8) return null;
 
-	return shuffle([...byVal.entries()])
-		.slice(0, 8)
-		.map(([, cells]) => cells[rand(0, cells.length - 1)]);
+	for (let attempt = 0; attempt < 50; attempt++) {
+		const blanks = shuffle([...byVal.entries()])
+			.slice(0, 8)
+			.map(([, cells]) => cells[rand(0, cells.length - 1)]);
+		const rows = new Set(blanks.map(([r]) => r));
+		const cols = new Set(blanks.map(([, c]) => c));
+		if (rows.size === 4 && cols.size === 4) return blanks;
+	}
+	return null;
 }
 
 export function generatePuzzle(): EquatoPuzzle {

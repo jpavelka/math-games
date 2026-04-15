@@ -16,6 +16,7 @@
 		Array.from({ length: 4 }, () => Array(4).fill(null))
 	);
 	let selectedBankNum = $state<number | null>(null);
+	let selectedCell = $state<{ r: number; c: number } | null>(null);
 
 	// ─── derived ─────────────────────────────────────────────────────────────
 
@@ -68,22 +69,34 @@
 
 	function clickBankNum(n: number) {
 		if (bankPlaced.has(n)) return;
-		selectedBankNum = selectedBankNum === n ? null : n;
+		if (selectedCell !== null) {
+			// Cell already selected — place number directly into it
+			placement[selectedCell.r][selectedCell.c] = n;
+			selectedCell = null;
+		} else {
+			selectedBankNum = selectedBankNum === n ? null : n;
+		}
 	}
 
 	function clickCell(r: number, c: number) {
 		const isBlank = puzzle.grid[r][c] === null;
 		if (!isBlank) return;
 
-		const current = placement[r][c];
-
 		if (selectedBankNum !== null) {
-			// Place selected number (swap if cell already has one)
+			// Bank number already selected — place it
 			placement[r][c] = selectedBankNum;
 			selectedBankNum = null;
-		} else if (current !== null) {
-			// Return placed number to bank
+			selectedCell = null;
+		} else if (selectedCell?.r === r && selectedCell?.c === c) {
+			// Tap same cell again — deselect
+			selectedCell = null;
+		} else if (placement[r][c] !== null) {
+			// Filled cell, no selection — return number to bank
 			placement[r][c] = null;
+			selectedCell = null;
+		} else {
+			// Empty cell, no selection — select it, wait for bank number
+			selectedCell = { r, c };
 		}
 	}
 
@@ -91,6 +104,7 @@
 		puzzle = generatePuzzle();
 		placement = Array.from({ length: 4 }, () => Array(4).fill(null));
 		selectedBankNum = null;
+		selectedCell = null;
 	}
 
 	// ─── physical grid helpers ────────────────────────────────────────────────
@@ -176,12 +190,14 @@
 						{@const isBlank = given === null}
 						{@const isEmpty = isBlank && placed === null}
 						{@const isTarget = isEmpty && selectedBankNum !== null}
+						{@const isCellSelected = selectedCell?.r === r && selectedCell?.c === c}
 						<button
 							class="cell num-cell"
 							class:given={!isBlank}
 							class:blank={isEmpty}
 							class:filled={isBlank && placed !== null}
 							class:target={isTarget}
+							class:cell-selected={isCellSelected}
 							onclick={() => clickCell(r, c)}
 							disabled={!isBlank}
 						>
@@ -210,8 +226,8 @@
 	<div class="footer">
 		<p class="status-text">{solvedCount} / 8 equations solved</p>
 		<div class="actions">
-			{#if selectedBankNum !== null}
-				<button class="btn btn-secondary" onclick={() => (selectedBankNum = null)}>
+			{#if selectedBankNum !== null || selectedCell !== null}
+				<button class="btn btn-secondary" onclick={() => { selectedBankNum = null; selectedCell = null; }}>
 					Cancel selection
 				</button>
 			{/if}
@@ -365,6 +381,13 @@
 		background: rgba(108, 139, 239, 0.08);
 	}
 
+	.num-cell.cell-selected {
+		border-color: var(--color-accent);
+		background: rgba(108, 139, 239, 0.18);
+		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
+	}
+
 	.num-cell.filled {
 		border-style: solid;
 		border-color: var(--color-accent);
@@ -379,7 +402,7 @@
 
 	.op-cell {
 		background: transparent;
-		font-size: clamp(0.7rem, 2vw, 0.9rem);
+		font-size: clamp(0.9rem, 2.5vw, 1.1rem);
 		color: var(--color-text-muted);
 		transition: color 0.2s;
 	}

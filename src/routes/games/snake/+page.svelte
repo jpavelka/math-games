@@ -403,7 +403,7 @@
 	}
 
 	.op-sym {
-		font-size: 0.85rem;
+		font-size: 1.05rem;
 		color: var(--color-tag-number-theory);
 		line-height: 1;
 	}
