@@ -47,7 +47,7 @@
 <style>
 	header {
 		border-bottom: 1px solid var(--color-border);
-		padding: 0 1.5rem;
+		padding: env(safe-area-inset-top, 0px) 1.5rem 0;
 		position: sticky;
 		top: 0;
 		z-index: 20;
@@ -130,7 +130,7 @@
 
 	footer {
 		text-align: center;
-		padding: 1rem;
+		padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
 		color: var(--color-text-muted);
 		font-size: 0.85rem;
 		border-top: 1px solid var(--color-border);

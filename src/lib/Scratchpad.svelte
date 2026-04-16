@@ -223,6 +223,8 @@
 		onpointerdown={onResizeStart}
 		onpointermove={onResizeMove}
 		onpointerup={onResizeEnd}
+		onpointercancel={onResizeEnd}
+		style="touch-action:none"
 		aria-hidden="true"
 	>
 		<div class="resize-grip"></div>
@@ -324,7 +326,7 @@
 <style>
 	.panel {
 		position: fixed;
-		top: 61px;
+		top: calc(61px + env(safe-area-inset-top, 0px));
 		right: 0;
 		bottom: 0;
 		width: 320px; /* overridden by inline style */
@@ -341,7 +343,7 @@
 		left: 0;
 		top: 0;
 		bottom: 0;
-		width: 20px;
+		width: 28px;
 		cursor: col-resize;
 		z-index: 1;
 		display: flex;
@@ -351,10 +353,14 @@
 
 	.resize-grip {
 		width: 4px;
-		height: 40px;
+		height: 48px;
 		border-radius: 2px;
 		background: var(--color-border);
 		transition: background 0.15s, transform 0.15s;
+	}
+
+	@media (pointer: coarse) {
+		.resize-handle { width: 44px; }
 	}
 
 	.resize-handle:hover .resize-grip,

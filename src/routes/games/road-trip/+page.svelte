@@ -1201,27 +1201,29 @@
 	.reorder-btns {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
+		gap: 0;
 		flex-shrink: 0;
-		opacity: 0;
-		transition: opacity 0.15s;
 	}
-
-	.city-item:hover .reorder-btns { opacity: 1; }
 
 	.reorder-btn {
 		background: none;
 		border: none;
 		color: var(--color-text-muted);
-		font-size: 0.45rem;
+		font-size: 0.7rem;
 		line-height: 1;
-		padding: 0 0.15rem;
+		padding: 0.15rem 0.35rem;
+		min-width: 1.6rem;
+		min-height: 1.4rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		cursor: pointer;
-		transition: color 0.15s;
+		transition: color 0.15s, background 0.15s;
+		border-radius: var(--radius-sm);
 	}
 
-	.reorder-btn:hover:not(:disabled) { color: var(--color-accent); }
-	.reorder-btn:disabled { opacity: 0.25; cursor: default; }
+	.reorder-btn:hover:not(:disabled) { color: var(--color-accent); background: var(--color-surface-2); }
+	.reorder-btn:disabled { opacity: 0.2; cursor: default; }
 
 	.remove-btn {
 		background: none;
@@ -1229,15 +1231,21 @@
 		color: var(--color-text-muted);
 		font-size: 1rem;
 		line-height: 1;
-		padding: 0 0.1rem;
+		padding: 0.15rem 0.3rem;
+		min-width: 1.6rem;
+		min-height: 1.6rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		cursor: pointer;
 		flex-shrink: 0;
-		opacity: 0;
-		transition: opacity 0.15s, color 0.15s;
+		opacity: 0.35;
+		border-radius: var(--radius-sm);
+		transition: opacity 0.15s, color 0.15s, background 0.15s;
 	}
 
 	.city-item:hover .remove-btn { opacity: 1; }
-	.remove-btn:hover { color: #f87171; }
+	.remove-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); }
 
 	.drop-zone {
 		height: 3px;
