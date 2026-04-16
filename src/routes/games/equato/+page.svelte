@@ -144,7 +144,8 @@
 	<h1>Equato</h1>
 	<p class="desc">
 		Use each number from the bank exactly once to complete the equations.
-		Read equations <strong>left to right</strong> and <strong>top to bottom</strong>.
+		Read equations <strong>left to right</strong> and <strong>top to bottom</strong>,
+		applying operations as you encounter them (ignoring usual "order of operations" rules).
 	</p>
 
 	<!-- ── bank ── -->

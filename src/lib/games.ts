@@ -1,4 +1,4 @@
-export type Category = 'Arithmetic' | 'Logic' | 'Number Theory' | 'Geometry' | 'Combinatorics';
+export type Category = 'Arithmetic' | 'Logic' | 'Number Theory' | 'Geometry' | 'Combinatorics' | 'Graph Theory';
 
 export interface Game {
 	slug: string;
@@ -64,7 +64,7 @@ export const games: Game[] = [
 		slug: 'road-trip',
 		title: 'Road Trip',
 		description: 'A set of US cities appears on the map. Visit every city exactly once and return home — in as few kilometres as possible. Can you find the shortest route?',
-		categories: ['Logic', 'Combinatorics'],
+		categories: ['Graph Theory', 'Combinatorics'],
 		otherNames: ['traveling salesman', 'TSP'],
 		route: '/games/road-trip'
 	},
@@ -82,5 +82,21 @@ export const games: Game[] = [
 		categories: ['Logic'],
 		otherNames: ['mastermind', 'wordle'],
 		route: '/games/bulls-and-cows'
+	},
+	{
+		slug: 'wildlife-preserve',
+		title: 'Wildlife Preserve',
+		description: 'Sort feuding animals into separate habitats so no rivals share one. Use as few habitats as possible — a graph coloring puzzle.',
+		categories: ['Graph Theory', 'Combinatorics'],
+		otherNames: ['graph coloring', 'chromatic number'],
+		route: '/games/wildlife-preserve'
+	},
+	{
+		slug: 'food-cart-festival',
+		title: 'Food Cart Festival',
+		description: 'Curate the highest-scoring festival lineup. Some vendors refuse to share the event — pick a conflict-free set with the best total popularity.',
+		categories: ['Graph Theory', 'Combinatorics'],
+		otherNames: ['maximum weight independent set', 'MWIS', 'independent set'],
+		route: '/games/food-cart-festival'
 	}
 ];

@@ -156,8 +156,8 @@
 							{/each}
 						</div>
 						<div class="guess-score">
-							<span class="score-bulls">{g.bulls}<span class="score-lbl">B</span></span>
-							<span class="score-cows">{g.cows}<span class="score-lbl">C</span></span>
+							<span class="score-bulls">{g.bulls}<span class="score-lbl">B<span class="bovinemoji">🐂</span></span></span>
+							<span class="score-cows">{g.cows}<span class="score-lbl">C<span class="bovinemoji">🐄</span></span></span>
 						</div>
 					</div>
 				{/each}
@@ -229,8 +229,8 @@
 								{/each}
 							</div>
 							<div class="guess-score">
-								<span class="score-bulls">{g.bulls}<span class="score-lbl">B</span></span>
-								<span class="score-cows">{g.cows}<span class="score-lbl">C</span></span>
+								<span class="score-bulls">{g.bulls}<span class="score-lbl">B<span class="bovinemoji">🐂</span></span></span>
+								<span class="score-cows">{g.cows}<span class="score-lbl">C<span class="bovinemoji">🐄</span></span></span>
 							</div>
 						</div>
 					{/each}
@@ -543,4 +543,10 @@
 	}
 
 	.shake { animation: shake 0.4s ease; }
+
+	.bovinemoji {
+		/* display: inline-block;
+		vertical-align: middle; */
+		font-size: 1.75em;
+	}
 </style>
