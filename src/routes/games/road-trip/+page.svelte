@@ -167,6 +167,61 @@
 		return Math.round(km).toLocaleString('en-US') + ' km';
 	}
 
+	// ── Held-Karp exact TSP solver ────────────────────────────────────────────
+	function solveHeldKarp(dist: number[][]): { tour: number[]; distance: number; timeMs: number } {
+		const t0 = performance.now();
+		const n = dist.length;
+		if (n <= 1) return { tour: n ? [0] : [], distance: 0, timeMs: 0 };
+		if (n === 2) return { tour: [0, 1], distance: dist[0][1] + dist[1][0], timeMs: performance.now() - t0 };
+
+		const STATES = 1 << n;
+		const INF    = 1e9;
+		// Flat typed arrays indexed by mask * n + city
+		const dp     = new Float32Array(STATES * n).fill(INF);
+		const parent = new Int8Array(STATES * n).fill(-1);
+
+		dp[1 * n + 0] = 0; // at city 0, visited = {0}
+
+		for (let mask = 1; mask < STATES; mask++) {
+			if (!(mask & 1)) continue; // city 0 must always be in the visited set
+			for (let u = 0; u < n; u++) {
+				if (!(mask & (1 << u))) continue;
+				const dpU = dp[mask * n + u];
+				if (dpU >= INF) continue;
+				for (let v = 0; v < n; v++) {
+					if (mask & (1 << v)) continue;
+					const newMask = mask | (1 << v);
+					const cost    = dpU + dist[u][v];
+					if (cost < dp[newMask * n + v]) {
+						dp[newMask * n + v]     = cost;
+						parent[newMask * n + v] = u;
+					}
+				}
+			}
+		}
+
+		// Find cheapest final leg back to city 0
+		const fullMask = STATES - 1;
+		let bestDist = INF, lastCity = 1;
+		for (let u = 1; u < n; u++) {
+			const d = dp[fullMask * n + u] + dist[u][0];
+			if (d < bestDist) { bestDist = d; lastCity = u; }
+		}
+
+		// Reconstruct tour (ends up starting at city 0)
+		const tour: number[] = [];
+		let mask = fullMask, city: number = lastCity;
+		while (city >= 0) {
+			tour.push(city);
+			const prev = parent[mask * n + city];
+			mask ^= (1 << city);
+			city = prev;
+		}
+		tour.reverse();
+
+		return { tour, distance: bestDist, timeMs: performance.now() - t0 };
+	}
+
 	// ── game state ─────────────────────────────────────────────────────────────
 	const DIFFICULTY = [
 		{ label: 'Easy',   count: 8  },
@@ -182,7 +237,12 @@
 	let gameCities  = $state<City[]>([]);
 	let path        = $state<number[]>([]);
 	let hovered     = $state<number | null>(null);
-	let showMatrix  = $state(false);
+	let showMatrix      = $state(false);
+	let optimalTour     = $state<number[] | null>(null);
+	let optimalDistance = $state<number | null>(null);
+	let solverMs        = $state<number | null>(null);
+	let solverRunning   = $state(false);
+	let showOptimal     = $state(false);
 
 	function shuffle<T>(arr: T[]): T[] {
 		const a = [...arr];
@@ -194,10 +254,34 @@
 	}
 
 	function startGame() {
-		gameCities = shuffle([...CITIES]).slice(0, difficulty);
-		path       = [];
-		hovered    = null;
-		phase      = 'playing';
+		gameCities      = shuffle([...CITIES]).slice(0, difficulty);
+		path            = [];
+		hovered         = null;
+		phase           = 'playing';
+		optimalTour     = null;
+		optimalDistance = null;
+		solverMs        = null;
+		solverRunning   = true;
+		showOptimal     = false;
+
+		const snapshot = [...gameCities];
+		setTimeout(() => {
+			const mat = snapshot.map((a, i) =>
+				snapshot.map((b, j) => i === j ? 0 : haversineKm(a, b))
+			);
+			try {
+				const result = solveHeldKarp(mat);
+				optimalTour     = result.tour;
+				optimalDistance = result.distance;
+				solverMs        = result.timeMs;
+				if (phase === 'done') {
+					showOptimal = Math.round(totalDistance) > Math.round(result.distance);
+				}
+			} catch {
+				// allocation or compute failure (e.g. OOM on very large n)
+			}
+			solverRunning = false;
+		}, 0);
 	}
 
 	function clickCity(i: number) {
@@ -208,7 +292,12 @@
 	function undoLast() { path = path.slice(0, -1); }
 
 	function closeRoute() {
-		if (path.length === gameCities.length) phase = 'done';
+		if (path.length === gameCities.length) {
+			phase = 'done';
+			if (optimalDistance !== null) {
+				showOptimal = Math.round(totalDistance) > Math.round(optimalDistance);
+			}
+		}
 	}
 
 	// ── zoom / pan ────────────────────────────────────────────────────────────
@@ -355,6 +444,12 @@
 	// Accounts for both zoom level (vb.w) and actual display width (mapWidth),
 	// so all symbols stay at consistent screen-pixel sizes on any screen size.
 	const PX = $derived(vb.w / Math.max(1, mapWidth));
+
+	const optimalPolylinePoints = $derived(
+		optimalTour && optimalTour.length >= 2
+			? [...optimalTour, optimalTour[0]].map(i => pts[i].join(',')).join(' ')
+			: ''
+	);
 
 	// ── distance matrix ───────────────────────────────────────────────────────
 	const distMatrix = $derived(
@@ -531,6 +626,18 @@
 						Click a city to begin
 					{/if}
 				</span>
+				{#if solverRunning && phase === 'done'}
+					<span class="hud-dist hud-computing">Computing optimal…</span>
+				{:else if phase === 'done' && optimalDistance !== null}
+					{#if Math.round(totalDistance) <= Math.round(optimalDistance)}
+						<span class="hud-optimal-found">Optimal route!</span>
+					{:else}
+						<span class="hud-dist">
+							Optimal: <strong>{fmtKm(optimalDistance)}</strong>
+							<span class="solver-meta">+{((totalDistance / optimalDistance - 1) * 100).toFixed(1)}% over optimal</span>
+						</span>
+					{/if}
+				{/if}
 			</div>
 			<div class="hud-actions">
 				{#if vb.w < SVG_W - 1}
@@ -539,10 +646,11 @@
 					</button>
 				{/if}
 				{#if phase === 'playing'}
+					<button class="btn sm btn-ghost" onclick={() => (phase = 'idle')}>New Game</button>
 					<button class="btn sm btn-ghost" onclick={undoLast} disabled={path.length === 0}>Undo</button>
 					<button class="btn sm btn-ghost" onclick={() => { path = []; }} disabled={path.length === 0}>Clear</button>
 					{#if allVisited}
-						<button class="btn sm" onclick={closeRoute}>Close Route</button>
+						<button class="btn sm" onclick={closeRoute}>Submit Route</button>
 					{/if}
 				{:else}
 					<button class="btn sm btn-ghost" onclick={() => (phase = 'idle')}>Settings</button>
@@ -574,6 +682,14 @@
 					<path d={BORDERS_PATH} fill="none" stroke="#2a4060" stroke-width="0.6"/>
 					<!-- coastline -->
 					<path d={COAST_PATH} fill="none" stroke="#2e4d6e" stroke-width="1"/>
+
+					<!-- optimal route (Held-Karp) -->
+					{#if showOptimal && optimalPolylinePoints}
+						<polyline points={optimalPolylinePoints} fill="none"
+							stroke="#4ade80" stroke-width={2 * PX}
+							stroke-opacity="0.55" stroke-linejoin="round" stroke-linecap="round"
+							stroke-dasharray="{6 * PX} {3 * PX}"/>
+					{/if}
 
 					<!-- route drawn so far -->
 					{#if path.length >= 2}
@@ -874,6 +990,13 @@
 
 	.hud-dist { font-size: 0.9rem; color: var(--color-text-muted); }
 	.hud-dist strong { color: var(--color-text); font-variant-numeric: tabular-nums; }
+	.hud-computing { font-style: italic; opacity: 0.6; }
+	.solver-meta { font-size: 0.75rem; color: var(--color-text-muted); margin-left: 0.3rem; }
+	.hud-optimal-found {
+		font-size: 0.9rem;
+		font-weight: 700;
+		color: #4ade80;
+	}
 
 	.hud-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 

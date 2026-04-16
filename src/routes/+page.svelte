@@ -1,15 +1,29 @@
 <script lang="ts">
-	import { games, type Category } from '$lib/games';
+	import { games } from '$lib/games';
 	import { base } from '$app/paths';
 
 	let query = $state('');
 
-	const categoryColors: Record<Category, string> = {
-		Arithmetic: 'tag-arithmetic',
-		Logic: 'tag-logic',
-		'Number Theory': 'tag-number-theory',
-		Geometry: 'tag-geometry'
+	// Hand-picked hues for known categories; any unknown category falls back to a
+	// hash-derived hue from the overflow palette so new categories just work.
+	const KNOWN_HUES: Record<string, number> = {
+		'Arithmetic':    142,
+		'Logic':          37,
+		'Number Theory': 263,
+		'Geometry':      199,
+		'Combinatorics':  24,
 	};
+	const OVERFLOW_PALETTE = [320, 180, 230, 18, 85, 350, 160, 290];
+
+	function tagStyle(cat: string): string {
+		let hue = KNOWN_HUES[cat];
+		if (hue === undefined) {
+			let h = 5381;
+			for (let i = 0; i < cat.length; i++) h = ((h << 5) + h + cat.charCodeAt(i)) >>> 0;
+			hue = OVERFLOW_PALETTE[h % OVERFLOW_PALETTE.length];
+		}
+		return `background:hsla(${hue},65%,65%,0.15);color:hsl(${hue},80%,72%)`;
+	}
 
 	const filtered = $derived(
 		query.trim() === ''
@@ -54,7 +68,7 @@
 				<a href="{base}{game.route}" class="card">
 					<div class="card-tags">
 						{#each game.categories as cat}
-							<span class="card-tag {categoryColors[cat]}">{cat}</span>
+							<span class="card-tag" style={tagStyle(cat)}>{cat}</span>
 						{/each}
 					</div>
 					<h2>{game.title}</h2>
@@ -184,26 +198,6 @@
 		padding: 0.2rem 0.55rem;
 		border-radius: var(--radius-sm);
 		width: fit-content;
-	}
-
-	.tag-arithmetic {
-		background: rgba(74, 222, 128, 0.15);
-		color: var(--color-tag-arithmetic);
-	}
-
-	.tag-logic {
-		background: rgba(245, 158, 11, 0.15);
-		color: var(--color-tag-logic);
-	}
-
-	.tag-number-theory {
-		background: rgba(167, 139, 250, 0.15);
-		color: var(--color-tag-number-theory);
-	}
-
-	.tag-geometry {
-		background: rgba(56, 189, 248, 0.15);
-		color: var(--color-tag-geometry);
 	}
 
 	.empty {
