@@ -3,17 +3,19 @@
 
 	type Op = '+' | '−' | '×' | '÷';
 
-	const TOTAL = 10;
-	const TIME_PER_Q = 10;
-	const MAX_VAL_OPTIONS = [5, 10, 12, 20, 50];
+	const MAX_VAL_OPTIONS   = [5, 10, 12, 20, 50];
+	const TOTAL_OPTIONS     = [5, 10, 15, 20, 30, 50];
+	const TIME_OPTIONS      = [3, 5, 10, 15, 20];
 
 	// ── settings (persist across games) ──────────────────────────────────────
-	let opAdd = $state(false);
-	let opSub = $state(false);
-	let opMul = $state(true);
-	let opDiv = $state(false);
-	let maxVal = $state(12);
+	let opAdd    = $state(false);
+	let opSub    = $state(false);
+	let opMul    = $state(true);
+	let opDiv    = $state(false);
+	let maxVal   = $state(12);
 	let allowNeg = $state(false);
+	let totalQ   = $state(10);
+	let timePerQ = $state(10);
 
 	const enabledOps = $derived<Op[]>([
 		...(opAdd ? (['+'] as Op[]) : []),
@@ -31,20 +33,28 @@
 		highScore = 0;
 	}
 
-	function setMaxVal(v: number) { maxVal = v; highScore = 0; }
-	function setAllowNeg(v: boolean) { allowNeg = v; highScore = 0; }
+	function setMaxVal(v: number)   { maxVal   = v; highScore = 0; }
+	function setAllowNeg(v: boolean){ allowNeg = v; highScore = 0; }
+	function setTotalQ(v: number)   { totalQ   = v; highScore = 0; }
+	function setTimePerQ(v: number) { timePerQ = v; highScore = 0; }
 
 	// ── game state ───────────────────────────────────────────────────────────
 	type Phase = 'idle' | 'playing' | 'done';
 
-	let phase = $state<Phase>('idle');
+	interface QuestionRecord {
+		a: number; b: number; op: Op; answer: number;
+		userAnswer: number | null; // null = timed out
+	}
+
+	let phase         = $state<Phase>('idle');
 	let questionIndex = $state(0);
-	let score = $state(0);
-	let highScore = $state(0);
-	let timeLeft = $state(TIME_PER_Q);
-	let input = $state('');
-	let shake = $state(false);
-	let flash = $state<'correct' | 'wrong' | null>(null);
+	let score         = $state(0);
+	let highScore     = $state(0);
+	let timeLeft      = $state(10);
+	let input         = $state('');
+	let shake         = $state(false);
+	let flash         = $state<'correct' | 'wrong' | null>(null);
+	let history       = $state<QuestionRecord[]>([]);
 	let interval: ReturnType<typeof setInterval> | null = null;
 
 	let qA = $state(0);
@@ -99,17 +109,18 @@
 		score = 0;
 		questionIndex = 0;
 		input = '';
+		history = [];
 		phase = 'playing';
 		generateQuestion();
 		startTimer();
 	}
 
 	function startTimer() {
-		timeLeft = TIME_PER_Q;
+		timeLeft = timePerQ;
 		if (interval) clearInterval(interval);
 		interval = setInterval(() => {
 			timeLeft--;
-			if (timeLeft <= 0) { showFlash('wrong'); advance(); }
+			if (timeLeft <= 0) { recordQuestion(null); showFlash('wrong'); advance(); }
 		}, 1000);
 	}
 
@@ -117,9 +128,14 @@
 		if (interval) { clearInterval(interval); interval = null; }
 	}
 
+	function recordQuestion(userAnswer: number | null) {
+		history = [...history, { a: qA, b: qB, op: qOp, answer: qAnswer, userAnswer }];
+	}
+
 	function submit() {
 		const n = parseInt(input, 10);
 		if (isNaN(n)) { triggerShake(); return; }
+		recordQuestion(n);
 		if (n === qAnswer) { score++; showFlash('correct'); }
 		else { showFlash('wrong'); }
 		advance();
@@ -129,7 +145,7 @@
 		stopTimer();
 		input = '';
 		questionIndex++;
-		if (questionIndex >= TOTAL) {
+		if (questionIndex >= totalQ) {
 			phase = 'done';
 			if (score > highScore) highScore = score;
 		} else {
@@ -162,7 +178,7 @@
 	<h1>Arithmetic Blitz</h1>
 
 	{#if phase === 'idle'}
-		<p class="desc">Answer <strong>{TOTAL}</strong> questions against the clock. Configure your challenge below.</p>
+		<p class="desc">Answer <strong>{totalQ}</strong> questions against the clock. Configure your challenge below.</p>
 
 		<div class="settings">
 			<div class="setting-row">
@@ -199,11 +215,29 @@
 					<button class="tog-btn" class:active={allowNeg}  onclick={() => setAllowNeg(true)}>On</button>
 				</div>
 			</div>
+
+			<div class="setting-row">
+				<span class="setting-label">Problems</span>
+				<div class="toggle-group">
+					{#each TOTAL_OPTIONS as v}
+						<button class="tog-btn" class:active={totalQ === v} onclick={() => setTotalQ(v)}>{v}</button>
+					{/each}
+				</div>
+			</div>
+
+			<div class="setting-row">
+				<span class="setting-label">Secs / problem</span>
+				<div class="toggle-group">
+					{#each TIME_OPTIONS as v}
+						<button class="tog-btn" class:active={timePerQ === v} onclick={() => setTimePerQ(v)}>{v}s</button>
+					{/each}
+				</div>
+			</div>
 		</div>
 
 		<div class="center">
 			{#if highScore > 0}
-				<p class="high-score">Best: {highScore} / {TOTAL}</p>
+				<p class="high-score">Best: {highScore} / {totalQ}</p>
 			{/if}
 			<button class="btn large" onclick={startGame}>Start</button>
 		</div>
@@ -211,10 +245,10 @@
 	{:else if phase === 'playing'}
 		<div class="quiz-card" class:flash-correct={flash === 'correct'} class:flash-wrong={flash === 'wrong'}>
 			<div class="progress-bar">
-				<div class="progress-fill" style="width:{(questionIndex / TOTAL) * 100}%"></div>
+				<div class="progress-fill" style="width:{(questionIndex / totalQ) * 100}%"></div>
 			</div>
 			<div class="meta">
-				<span>Question {questionIndex + 1} / {TOTAL}</span>
+				<span>Question {questionIndex + 1} / {totalQ}</span>
 				<span class="timer" class:urgent={timeLeft <= 3}>{timeLeft}s</span>
 			</div>
 			<p class="question">
@@ -231,15 +265,18 @@
 				<button class="btn" onclick={submit}>Submit</button>
 			</div>
 			<p class="score-live">Score: <strong>{score}</strong></p>
+			<div class="new-game-row">
+				<button class="btn btn-secondary" onclick={() => (phase = 'idle')}>New Game</button>
+			</div>
 		</div>
 
 	{:else}
 		<div class="result-card">
 			<p class="result-label">Final Score</p>
-			<p class="result-score">{score} <span>/ {TOTAL}</span></p>
-			{#if score === TOTAL}
+			<p class="result-score">{score} <span>/ {totalQ}</span></p>
+			{#if score === totalQ}
 				<p class="result-msg">Perfect score!</p>
-			{:else if score >= TOTAL * 0.7}
+			{:else if score >= totalQ * 0.7}
 				<p class="result-msg">Great job!</p>
 			{:else}
 				<p class="result-msg">Keep practising!</p>
@@ -250,6 +287,28 @@
 			<div class="result-actions">
 				<button class="btn large" onclick={startGame}>Play again</button>
 				<button class="btn large btn-secondary" onclick={() => (phase = 'idle')}>Settings</button>
+			</div>
+		</div>
+
+		<div class="review">
+			<p class="review-title">Review</p>
+			<div class="review-list">
+				{#each history as q, i}
+					{@const correct = q.userAnswer === q.answer}
+					<div class="review-item" class:review-correct={correct} class:review-wrong={!correct}>
+						<span class="review-num">{i + 1}</span>
+						<span class="review-eq">
+							{fmt(q.a, q.op !== '+' && q.op !== '−')} {q.op} {fmt(q.b, true)} = <strong>{q.answer}</strong>
+						</span>
+						{#if correct}
+							<span class="review-badge ok">✓</span>
+						{:else if q.userAnswer === null}
+							<span class="review-badge miss">timed out</span>
+						{:else}
+							<span class="review-badge bad">you: {q.userAnswer}</span>
+						{/if}
+					</div>
+				{/each}
 			</div>
 		</div>
 	{/if}
@@ -357,7 +416,7 @@
 		transition: border-color 0.15s;
 	}
 
-	.quiz-card.flash-correct { border-color: var(--color-tag-arithmetic); }
+	.quiz-card.flash-correct { border-color: #4ade80; }
 	.quiz-card.flash-wrong   { border-color: #ef4444; }
 
 	.progress-bar {
@@ -461,9 +520,15 @@
 	.new-best {
 		font-size: 0.85rem;
 		font-weight: 700;
-		color: var(--color-tag-arithmetic);
+		color: #4ade80;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
+	}
+
+	.new-game-row {
+		display: flex;
+		justify-content: center;
+		margin-top: 0.75rem;
 	}
 
 	.result-actions {
@@ -498,6 +563,61 @@
 	}
 
 	.btn-secondary:hover { background: var(--color-border); }
+
+	/* ── review ── */
+	.review { margin-top: 1.5rem; }
+
+	.review-title {
+		font-size: 0.78rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.07em;
+		color: var(--color-text-muted);
+		margin-bottom: 0.5rem;
+	}
+
+	.review-list {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		overflow: hidden;
+		max-height: 420px;
+		overflow-y: auto;
+	}
+
+	.review-item {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.55rem 1rem;
+		border-bottom: 1px solid var(--color-border);
+		font-size: 0.88rem;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.review-item:last-child { border-bottom: none; }
+
+	.review-num {
+		font-size: 0.72rem;
+		color: var(--color-text-muted);
+		min-width: 1.2rem;
+		text-align: right;
+		flex-shrink: 0;
+	}
+
+	.review-eq { flex: 1; }
+
+	.review-badge {
+		font-size: 0.75rem;
+		font-weight: 700;
+		padding: 0.15rem 0.45rem;
+		border-radius: var(--radius-sm);
+		flex-shrink: 0;
+	}
+
+	.review-badge.ok   { color: #4ade80; background: rgba(74,222,128,0.12); }
+	.review-badge.bad  { color: #f87171; background: rgba(248,113,113,0.12); }
+	.review-badge.miss { color: var(--color-text-muted); background: var(--color-surface-2); }
 
 	@keyframes shake {
 		0%, 100% { transform: translateX(0); }

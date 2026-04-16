@@ -1,4 +1,4 @@
-export type Category = 'Arithmetic' | 'Logic' | 'Number Theory' | 'Geometry';
+export type Category = 'Arithmetic' | 'Logic' | 'Number Theory' | 'Geometry' | 'Combinatorics';
 
 export interface Game {
 	slug: string;
@@ -49,7 +49,7 @@ export const games: Game[] = [
 		slug: 'trail-pack',
 		title: 'Trail Pack',
 		description: 'Each item has a fixed weight and a random value. Pack the highest-value combination that fits under the weight limit — then see how close you were to optimal.',
-		categories: ['Logic'],
+		categories: ['Logic', 'Combinatorics'],
 		otherNames: ['knapsack'],
 		route: '/games/trail-pack'
 	},
@@ -59,6 +59,14 @@ export const games: Game[] = [
 		description: 'Place each number from the bank exactly once so that every row and column forms a valid equation.',
 		categories: ['Arithmetic', 'Logic'],
 		route: '/games/equato'
+	},
+	{
+		slug: 'road-trip',
+		title: 'Road Trip',
+		description: 'A set of US cities appears on the map. Visit every city exactly once and return home — in as few kilometres as possible. Can you find the shortest route?',
+		categories: ['Logic', 'Combinatorics'],
+		otherNames: ['traveling salesman', 'TSP'],
+		route: '/games/road-trip'
 	},
 	{
 		slug: 'paren-placer',

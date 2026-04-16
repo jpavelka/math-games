@@ -13,11 +13,7 @@
 	--color-text-muted: #8b90a8;
 	--color-accent: #6c8bef;
 	--color-accent-hover: #8aa3f5;
-	--color-tag-arithmetic: #4ade80;
-	--color-tag-logic: #f59e0b;
-	--color-tag-number-theory: #a78bfa;
-	--color-tag-geometry: #38bdf8;
-	--radius: 12px;
+--radius: 12px;
 	--radius-sm: 6px;
 	font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }

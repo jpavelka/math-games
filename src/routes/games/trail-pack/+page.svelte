@@ -423,6 +423,7 @@
 		{@render itemTable()}
 
 		<div class="submit-row">
+			<button class="btn large btn-secondary" onclick={() => (phase = 'idle')}>New Game</button>
 			<button
 				class="btn large btn-secondary"
 				onclick={() => { selected = new Array(itemCount).fill(false); }}
