@@ -74,5 +74,13 @@ export const games: Game[] = [
 		description: 'Add parentheses to an arithmetic formula to make it correct. Navigate your way to the target value!',
 		categories: ['Arithmetic'],
 		route: '/games/paren-placer'
+	},
+	{
+		slug: 'bulls-and-cows',
+		title: 'Bulls & Cows',
+		description: 'Crack a secret code of unique digits. Each guess scores bulls (right digit, right position) and cows (right digit, wrong position). The classic deduction game.',
+		categories: ['Logic'],
+		otherNames: ['mastermind', 'wordle'],
+		route: '/games/bulls-and-cows'
 	}
 ];
