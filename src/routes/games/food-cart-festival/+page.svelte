@@ -168,6 +168,33 @@
 		Click carts to include them; build the highest-scoring conflict-free lineup!
 	</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>Maximum Weight Independent Set</h3>
+			<p>
+				Selecting the highest-scoring conflict-free lineup is the
+				<a href="https://en.wikipedia.org/wiki/Independent_set_(graph_theory)" target="_blank" rel="noopener">maximum weight independent set</a>
+				problem: find the highest-value subset of vertices such that no two share an edge.
+				It is <a href="https://en.wikipedia.org/wiki/NP-hardness" target="_blank" rel="noopener">NP-hard</a> for general graphs.
+			</p>
+			<h4>Special cases</h4>
+			<p>
+				On <a href="https://en.wikipedia.org/wiki/Bipartite_graph" target="_blank" rel="noopener">bipartite graphs</a>,
+				<a href="https://en.wikipedia.org/wiki/K%C5%91nig%27s_theorem_(graph_theory)" target="_blank" rel="noopener">König's theorem</a>
+				allows an exact polynomial-time solution via maximum matching.
+				On sparse, low-degree graphs — like those in this game — human intuition
+				often reaches the optimum quickly.
+			</p>
+			<h4>Complement: vertex cover</h4>
+			<p>
+				A maximum independent set is the complement of a
+				<a href="https://en.wikipedia.org/wiki/Vertex_cover" target="_blank" rel="noopener">minimum vertex cover</a> —
+				the smallest set of vertices that touches every conflict edge.
+			</p>
+		</div>
+	</details>
+
 	<!-- ══ IDLE ═════════════════════════════════════════════════════════════════ -->
 	{#if phase === 'idle'}
 		<div class="settings">
@@ -360,11 +387,6 @@
 
 	h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; }
 
-	.desc {
-		color: var(--color-text-muted);
-		line-height: 1.65;
-		margin-bottom: 1.75rem;
-	}
 
 	/* ── Settings ── */
 	.settings {

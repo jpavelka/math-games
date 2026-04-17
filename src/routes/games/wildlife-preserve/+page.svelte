@@ -161,6 +161,34 @@
 		is expensive to build and maintain!
 	</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>Graph Coloring</h3>
+			<p>
+				Sorting animals so no rivals share a habitat is the
+				<a href="https://en.wikipedia.org/wiki/Graph_coloring" target="_blank" rel="noopener">graph coloring problem</a>.
+				The minimum number of colors needed is the
+				<a href="https://en.wikipedia.org/wiki/Chromatic_number" target="_blank" rel="noopener">chromatic number</a> χ(G),
+				and computing it is <a href="https://en.wikipedia.org/wiki/NP-hardness" target="_blank" rel="noopener">NP-hard</a> in general.
+			</p>
+			<h4>The Four Color Theorem</h4>
+			<p>
+				For planar graphs (those drawable without edge crossings), the
+				<a href="https://en.wikipedia.org/wiki/Four_color_theorem" target="_blank" rel="noopener">Four Color Theorem</a>
+				guarantees χ(G) ≤ 4. Conjectured in 1852, it was finally proved in 1976 by
+				Appel and Haken — one of the first major proofs to rely on a computer,
+				verifying 1,936 unavoidable configurations.
+			</p>
+			<h4>Greedy coloring</h4>
+			<p>
+				A greedy approach assigns each vertex the smallest color not yet used by any neighbour.
+				It uses at most Δ(G) + 1 colors (Δ = maximum degree) but doesn't always reach χ(G).
+				The game solves the puzzle optimally using backtracking.
+			</p>
+		</div>
+	</details>
+
 	<!-- ══ IDLE ═════════════════════════════════════════════════════════════════ -->
 	{#if phase === 'idle'}
 		<div class="settings">
@@ -365,11 +393,6 @@
 
 	h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; }
 
-	.desc {
-		color: var(--color-text-muted);
-		line-height: 1.65;
-		margin-bottom: 1.75rem;
-	}
 
 	/* ── Settings ── */
 	.settings {

@@ -180,6 +180,36 @@
 	{#if phase === 'idle'}
 		<p class="desc">Answer <strong>{totalQ}</strong> questions against the clock. Configure your challenge below.</p>
 
+		<details class="learn-details">
+			<summary>Learn more</summary>
+			<div class="learn-body">
+				<h3>Mental Arithmetic</h3>
+				<p>
+					Speed arithmetic trains
+					<a href="https://en.wikipedia.org/wiki/Mental_calculation" target="_blank" rel="noopener">mental calculation</a> —
+					the ability to perform arithmetic entirely in your head.
+					Competitive mental calculators exploit techniques like decomposition
+					(split numbers into round parts), cross-multiplication, and working left-to-right
+					to avoid holding large intermediate values.
+				</p>
+				<h4>Multiplication strategies</h4>
+				<p>
+					Near-square identities like (n+a)(n−a) = n² − a² and doubling/halving
+					(14 × 8 = 7 × 16 = 112) often beat standard long multiplication.
+					The <a href="https://en.wikipedia.org/wiki/Vedic_Mathematics_(book)" target="_blank" rel="noopener">Vedic Mathematics</a>
+					tradition catalogues dozens of such shortcuts.
+				</p>
+				<h4>Spaced repetition</h4>
+				<p>
+					Fluency with basic facts is best built through
+					<a href="https://en.wikipedia.org/wiki/Spaced_repetition" target="_blank" rel="noopener">spaced repetition</a>:
+					revisiting facts at increasing intervals just before they'd be forgotten.
+					Speed drills like this one build the automaticity that frees up working
+					memory for harder problems.
+				</p>
+			</div>
+		</details>
+
 		<div class="settings">
 			<div class="setting-row">
 				<span class="setting-label">Operators</span>
@@ -333,10 +363,6 @@
 		margin-bottom: 0.4rem;
 	}
 
-	.desc {
-		color: var(--color-text-muted);
-		margin-bottom: 1.5rem;
-	}
 
 	/* ── settings ── */
 	.settings {

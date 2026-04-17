@@ -130,6 +130,27 @@
 		numbers in the same grid. Your answers feed into the final puzzle.
 	</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>Kakooma</h3>
+			<p>
+				Kakooma was created by Greg Tang and is available at
+				<a href="https://tangmath.com/" target="_blank" rel="noopener">Tang Math</a>.
+				The puzzle sharpens mental arithmetic by requiring you to identify one number
+				in a grid as the sum (or product) of two others.
+			</p>
+			<h4>The search problem</h4>
+			<p>
+				In a grid of n numbers there are n(n−1)/2 pairs to check — 10 pairs for 5 numbers,
+				45 for 10. Scanning efficiently requires pattern recognition and arithmetic fluency
+				at the same time. The structure is a restricted
+				<a href="https://en.wikipedia.org/wiki/Subset_sum_problem" target="_blank" rel="noopener">subset sum problem</a>,
+				limited to pairs rather than arbitrary subsets.
+			</p>
+		</div>
+	</details>
+
 	<!-- ── controls ── -->
 	<div class="controls">
 		<div class="control-row">
@@ -284,11 +305,6 @@
 		margin-bottom: 0.4rem;
 	}
 
-	.desc {
-		color: var(--color-text-muted);
-		margin-bottom: 1.5rem;
-		line-height: 1.6;
-	}
 
 	/* ── controls ── */
 	.controls {

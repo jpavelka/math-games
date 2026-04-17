@@ -1,4 +1,4 @@
-export type Category = 'Arithmetic' | 'Logic' | 'Number Theory' | 'Geometry' | 'Combinatorics' | 'Graph Theory';
+export type Category = 'Arithmetic' | 'Logic' | 'Number Theory' | 'Geometry' | 'Combinatorics' | 'Graph Theory' | 'Information Theory';
 
 export interface Game {
 	slug: string;
@@ -14,7 +14,7 @@ export const games: Game[] = [
 		slug: 'number-guessing',
 		title: 'Number Guessing',
 		description: 'Guess the secret number between 1 and 100. Use higher/lower hints to zero in.',
-		categories: ['Logic'],
+		categories: ['Logic', 'Information Theory'],
 		route: '/games/number-guessing'
 	},
 	{
@@ -79,7 +79,7 @@ export const games: Game[] = [
 		slug: 'bulls-and-cows',
 		title: 'Bulls & Cows',
 		description: 'Crack a secret code of unique digits. Each guess scores bulls (right digit, right position) and cows (right digit, wrong position). The classic deduction game.',
-		categories: ['Logic'],
+		categories: ['Logic', 'Information Theory'],
 		otherNames: ['mastermind', 'wordle'],
 		route: '/games/bulls-and-cows'
 	},

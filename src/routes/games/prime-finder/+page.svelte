@@ -57,6 +57,34 @@
 	<h1>Prime Finder</h1>
 	<p class="desc">Enter any integer between 2 and 1,000,000 to check if it's prime and see its prime factorization.</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>Prime Numbers and Factorisation</h3>
+			<p>
+				The <a href="https://en.wikipedia.org/wiki/Fundamental_theorem_of_arithmetic" target="_blank" rel="noopener">Fundamental Theorem of Arithmetic</a>
+				states that every integer greater than 1 has a unique prime factorisation —
+				primes are the "atoms" of the integers.
+			</p>
+			<h4>Primality testing</h4>
+			<p>
+				This tool uses trial division: test every integer up to √n.
+				Only √n divisors need checking because if n = a × b with a ≤ b, then a ≤ √n.
+				For very large numbers, probabilistic tests like
+				<a href="https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test" target="_blank" rel="noopener">Miller–Rabin</a>
+				are far faster and underpin modern cryptography.
+			</p>
+			<h4>How many primes are there?</h4>
+			<p>
+				Infinitely many — Euclid proved this around 300 BCE.
+				The <a href="https://en.wikipedia.org/wiki/Prime_number_theorem" target="_blank" rel="noopener">Prime Number Theorem</a>
+				(1896) quantifies their density: roughly 1 in ln(n) integers near n are prime.
+				The <a href="https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes" target="_blank" rel="noopener">Sieve of Eratosthenes</a>
+				efficiently finds all primes up to a limit by crossing out multiples.
+			</p>
+		</div>
+	</details>
+
 	<div class="input-row" class:shake>
 		<input
 			type="number"
@@ -127,10 +155,6 @@
 		margin-bottom: 0.4rem;
 	}
 
-	.desc {
-		color: var(--color-text-muted);
-		margin-bottom: 2rem;
-	}
 
 	.input-row {
 		display: flex;

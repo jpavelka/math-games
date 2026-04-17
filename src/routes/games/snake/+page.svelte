@@ -156,6 +156,34 @@
 		Follow the chain from start to end. Fill in every blank square with the running result.
 	</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>Order of Operations</h3>
+			<p>
+				Snake Math applies operations strictly left-to-right, ignoring the usual
+				precedence rules. The standard conventions —
+				<a href="https://en.wikipedia.org/wiki/Order_of_operations" target="_blank" rel="noopener">PEMDAS / BODMAS</a>
+				— were formalised in the 19th century to avoid ambiguity in written expressions,
+				but are a convention, not a mathematical law.
+			</p>
+			<h4>Why left-to-right here?</h4>
+			<p>
+				Reading equations left-to-right without hierarchy keeps each step a single
+				mental arithmetic problem. This mirrors how calculators evaluated expressions
+				before algebraic logic (AOS) became standard — older calculators simply
+				applied each operation immediately as entered.
+			</p>
+			<h4>Mental arithmetic</h4>
+			<p>
+				Chaining operations is a core skill in
+				<a href="https://en.wikipedia.org/wiki/Mental_calculation" target="_blank" rel="noopener">mental calculation</a>.
+				Techniques like keeping a running total and decomposing numbers
+				(e.g. ×12 = ×10 + ×2) make longer chains tractable.
+			</p>
+		</div>
+	</details>
+
 	<div class="controls">
 		<label class="control-row">
 			<span class="control-label">Max number</span>
@@ -264,10 +292,6 @@
 		margin-bottom: 0.4rem;
 	}
 
-	.desc {
-		color: var(--color-text-muted);
-		margin-bottom: 2rem;
-	}
 
 	/* ── Controls ── */
 	.controls {

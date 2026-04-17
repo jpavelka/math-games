@@ -148,6 +148,33 @@
 		applying operations as you encounter them (ignoring usual "order of operations" rules).
 	</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>Equato</h3>
+			<p>
+				Equato was created by Greg Tang and is part of the
+				<a href="https://tangmath.com/" target="_blank" rel="noopener">Tang Math</a>
+				curriculum, designed to build number sense, mental arithmetic, and flexible thinking.
+			</p>
+			<h4>Order of operations</h4>
+			<p>
+				Equations are read strictly left-to-right or top-to-bottom, ignoring standard
+				<a href="https://en.wikipedia.org/wiki/Order_of_operations" target="_blank" rel="noopener">operator precedence</a>
+				(PEMDAS / BODMAS). So 2 + 3 × 4 evaluates as (2 + 3) × 4 = 20, not 14.
+				This is a deliberate design choice: it keeps each step a single mental arithmetic
+				problem and prevents the puzzle from requiring algebraic notation.
+			</p>
+			<h4>Constraint satisfaction</h4>
+			<p>
+				Filling the grid so every row and column equation holds simultaneously is a
+				<a href="https://en.wikipedia.org/wiki/Constraint_satisfaction_problem" target="_blank" rel="noopener">constraint satisfaction problem (CSP)</a>.
+				The shared number bank creates interdependencies: a digit used in one row is
+				unavailable for the others, propagating constraints across the entire grid.
+			</p>
+		</div>
+	</details>
+
 	<!-- ── bank ── -->
 	<div class="bank-section">
 		<p class="bank-label">Number Bank</p>
@@ -256,11 +283,6 @@
 		margin-bottom: 0.4rem;
 	}
 
-	.desc {
-		color: var(--color-text-muted);
-		margin-bottom: 1.5rem;
-		line-height: 1.6;
-	}
 
 	/* ── bank ── */
 	.bank-section {

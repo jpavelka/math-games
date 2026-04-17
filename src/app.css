@@ -38,3 +38,62 @@ button {
 	cursor: pointer;
 	font-family: inherit;
 }
+
+.desc {
+	color: var(--color-text-muted);
+	line-height: 1.65;
+	margin-bottom: 0.75rem;
+}
+
+/* ── Learn-more panels (shared across all game pages) ── */
+.learn-details {
+	margin-bottom: 1.5rem;
+}
+
+.learn-details > summary {
+	list-style: none;
+	color: var(--color-text-muted);
+	font-size: 0.82rem;
+	cursor: pointer;
+	user-select: none;
+	transition: color 0.15s;
+}
+
+.learn-details > summary::-webkit-details-marker { display: none; }
+
+.learn-details > summary::before { content: '▸ '; }
+.learn-details[open] > summary::before { content: '▾ '; }
+.learn-details > summary:hover { color: var(--color-text); }
+
+.learn-body {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-left: 3px solid var(--color-accent);
+	border-radius: var(--radius);
+	padding: 1rem 1.25rem;
+	margin-top: 0.6rem;
+	font-size: 0.88rem;
+	line-height: 1.65;
+	color: var(--color-text-muted);
+}
+
+.learn-body h3 {
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: var(--color-text);
+	margin: 0 0 0.6rem;
+}
+
+.learn-body h4 {
+	font-size: 0.82rem;
+	font-weight: 700;
+	color: var(--color-text);
+	margin: 0.9rem 0 0.25rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.learn-body p { margin: 0 0 0.4rem; }
+
+.learn-body a { color: var(--color-accent); text-decoration: underline; }
+.learn-body a:hover { color: var(--color-accent-hover); }

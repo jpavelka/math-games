@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import {
-		generateGame, gcd,
+		generateGame,
 		type Corner, type Difficulty, type GameState,
 	} from '$lib/billiards';
 
@@ -17,7 +17,8 @@
 	let phase  = $state<Phase>('idle');
 	let game   = $state<GameState | null>(null);
 	let guess  = $state<Corner | null>(null);
-	let streak = $state(0);
+	let streak    = $state(0);
+	let learnOpen = $state(false);
 
 	// Animation state
 	let animating = $state(false);
@@ -152,6 +153,53 @@
 		ends up. The answer depends on the table's GCD — a hidden connection between
 		geometry and number theory.
 	</p>
+
+	<button class="learn-btn" onclick={() => learnOpen = !learnOpen} aria-expanded={learnOpen}>
+		{learnOpen ? '▲ Hide' : '▼ Learn more'}
+	</button>
+
+	{#if learnOpen}
+		<div class="learn-panel">
+			<h3>The mathematics of billiard paths</h3>
+
+			<p>
+				Billiard ball trajectories on rectangular tables connect geometry to
+				number theory through the
+				<a href="https://en.wikipedia.org/wiki/Greatest_common_divisor" target="_blank" rel="noopener">greatest common divisor</a>.
+			</p>
+
+			<h4>The unfolding trick</h4>
+			<p>
+				Instead of reflecting the ball off walls, imagine <em>unfolding</em>
+				the table: tile the plane with mirror-image copies and draw a straight
+				diagonal line through them. The ball reaches a corner of the original
+				table exactly when this line hits a lattice point of the form
+				(k·M, l·N). The first such point is (LCM(M,N), LCM(M,N)), because
+				LCM is the smallest number divisible by both M and N.
+				See: <a href="https://en.wikipedia.org/wiki/Dynamical_billiards" target="_blank" rel="noopener">Dynamical billiards</a>.
+			</p>
+
+			<h4>Why GCD determines the destination</h4>
+			<p>
+				The ball traverses N/GCD column-widths and M/GCD row-heights.
+				Because N/GCD and M/GCD are always
+				<a href="https://en.wikipedia.org/wiki/Coprime_integers" target="_blank" rel="noopener">coprime</a>
+				(they share no common factor), they can never both be even — so the
+				ball can never return to its starting corner. The parity of each ratio
+				tells you which side the ball lands on:
+				odd → far side, even → same side it started.
+			</p>
+
+			<h4>Bounce count</h4>
+			<p>
+				Total bounces = (M + N) / GCD − 2. This counts every wall reflection,
+				subtracting the two "touches" that are actually corner pockets. The
+				<a href="https://en.wikipedia.org/wiki/Euclidean_algorithm" target="_blank" rel="noopener">Euclidean algorithm</a>
+				computes GCD in O(log min(M, N)) steps using the same remainder
+				structure that governs the ball's path.
+			</p>
+		</div>
+	{/if}
 
 	<!-- ══ IDLE ══════════════════════════════════════════════════════════════════ -->
 	{#if phase === 'idle'}
@@ -298,11 +346,54 @@
 
 	h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; }
 
-	.desc {
+	/* ── Learn more ── */
+	.learn-btn {
+		background: none;
+		border: none;
+		padding: 0;
+		margin-bottom: 1rem;
 		color: var(--color-text-muted);
-		line-height: 1.65;
-		margin-bottom: 1.75rem;
+		font-size: 0.82rem;
+		cursor: pointer;
+		transition: color 0.15s;
 	}
+	.learn-btn:hover { color: var(--color-text); }
+
+	.learn-panel {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-left: 3px solid var(--color-accent);
+		border-radius: var(--radius);
+		padding: 1rem 1.25rem;
+		margin-bottom: 1.5rem;
+		font-size: 0.88rem;
+		line-height: 1.65;
+		color: var(--color-text-muted);
+	}
+
+	.learn-panel h3 {
+		font-size: 0.95rem;
+		font-weight: 700;
+		color: var(--color-text);
+		margin: 0 0 0.6rem;
+	}
+
+	.learn-panel h4 {
+		font-size: 0.82rem;
+		font-weight: 700;
+		color: var(--color-text);
+		margin: 0.9rem 0 0.25rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.learn-panel p { margin: 0 0 0.4rem; }
+
+	.learn-panel a {
+		color: var(--color-accent);
+		text-decoration: underline;
+	}
+	.learn-panel a:hover { opacity: 0.8; }
 
 	/* ── Settings ── */
 	.settings {

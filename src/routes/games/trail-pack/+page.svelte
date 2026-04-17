@@ -371,6 +371,34 @@
 		exceeding the limit — then see how close you were to optimal.
 	</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>The 0/1 Knapsack Problem</h3>
+			<p>
+				Given items with weights and values, the
+				<a href="https://en.wikipedia.org/wiki/Knapsack_problem" target="_blank" rel="noopener">0/1 knapsack problem</a>
+				asks which subset maximises total value without exceeding a weight limit.
+				It is <a href="https://en.wikipedia.org/wiki/NP-hardness" target="_blank" rel="noopener">NP-hard</a>,
+				but a practical exact solution exists.
+			</p>
+			<h4>Dynamic programming</h4>
+			<p>
+				Build a table of size (items) × (capacity). Each cell dp[i][w] stores the best
+				value achievable using only the first i items at capacity w.
+				This <a href="https://en.wikipedia.org/wiki/Dynamic_programming" target="_blank" rel="noopener">dynamic programming (DP)</a>
+				solution runs in O(n × W) — pseudo-polynomial, because it depends on the numeric
+				value of the capacity, not just the number of items.
+			</p>
+			<h4>Why it matters</h4>
+			<p>
+				Knapsack variants appear in resource allocation, financial portfolio selection,
+				cargo loading, and cutting-stock problems. The optimal value shown after each
+				round is computed exactly via DP.
+			</p>
+		</div>
+	</details>
+
 	<!-- ══ IDLE ══════════════════════════════════════════════════════════════ -->
 	{#if phase === 'idle'}
 		<div class="settings">
@@ -571,11 +599,6 @@
 		margin-bottom: 0.4rem;
 	}
 
-	.desc {
-		color: var(--color-text-muted);
-		line-height: 1.65;
-		margin-bottom: 1.75rem;
-	}
 
 	/* ── settings ── */
 	.settings {

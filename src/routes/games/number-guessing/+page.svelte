@@ -63,6 +63,33 @@
 	<h1>Number Guessing</h1>
 	<p class="desc">I'm thinking of a number between <strong>1</strong> and <strong>100</strong>. Can you guess it?</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>Binary Search</h3>
+			<p>
+				The optimal strategy is <a href="https://en.wikipedia.org/wiki/Binary_search" target="_blank" rel="noopener">binary search</a>:
+				always guess the midpoint of the remaining range. This halves the possibilities
+				with every response, guaranteeing a win in at most ⌈log₂ 100⌉ = 7 guesses.
+			</p>
+			<h4>Information theory</h4>
+			<p>
+				Each "higher" or "lower" answer provides one bit of information.
+				Since log₂(100) ≈ 6.64, no strategy can guarantee fewer than 7 guesses —
+				binary search is optimal.
+				<a href="https://en.wikipedia.org/wiki/Information_theory" target="_blank" rel="noopener">Information theory</a>
+				formalises this as: you need at least log₂(n) bits to identify one item from n.
+			</p>
+			<h4>Wider uses</h4>
+			<p>
+				Binary search appears throughout computing — searching sorted arrays in O(log n),
+				finding roots numerically, and even git's
+				<a href="https://git-scm.com/docs/git-bisect" target="_blank" rel="noopener">git bisect</a>
+				command for locating which commit introduced a bug.
+			</p>
+		</div>
+	</details>
+
 	{#if status === 'won'}
 		<div class="won-banner">
 			<p>You got it in <strong>{guesses.length}</strong> {guesses.length === 1 ? 'guess' : 'guesses'}!</p>
@@ -113,11 +140,6 @@
 		font-size: 2rem;
 		font-weight: 800;
 		margin-bottom: 0.4rem;
-	}
-
-	.desc {
-		color: var(--color-text-muted);
-		margin-bottom: 2rem;
 	}
 
 	.input-row {

@@ -590,6 +590,31 @@
 		Click cities in the order you want to visit them, then close the loop.
 	</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>The Traveling Salesman Problem</h3>
+			<p>
+				The <a href="https://en.wikipedia.org/wiki/Travelling_salesman_problem" target="_blank" rel="noopener">Traveling Salesman Problem (TSP)</a>
+				asks for the shortest route visiting every city exactly once and returning home.
+				It is <a href="https://en.wikipedia.org/wiki/NP-hardness" target="_blank" rel="noopener">NP-hard</a>:
+				for n cities there are (n−1)!/2 distinct tours — over 43 billion for just 15 cities.
+			</p>
+			<h4>Exact algorithms</h4>
+			<p>
+				The <a href="https://en.wikipedia.org/wiki/Held%E2%80%93Karp_algorithm" target="_blank" rel="noopener">Held–Karp algorithm</a>
+				(1962) solves TSP exactly in O(n² 2ⁿ) time using dynamic programming over subsets —
+				dramatically better than brute force, but still exponential.
+			</p>
+			<h4>Heuristics</h4>
+			<p>
+				The game's hint uses the <a href="https://en.wikipedia.org/wiki/Nearest_neighbour_algorithm" target="_blank" rel="noopener">nearest-neighbour heuristic</a>:
+				always move to the closest unvisited city. It's fast and usually reasonable, but can
+				produce tours 20–25% longer than optimal — and occasionally much worse.
+			</p>
+		</div>
+	</details>
+
 	<!-- ══ IDLE ══════════════════════════════════════════════════════════════ -->
 	{#if phase === 'idle'}
 		<div class="settings">
@@ -932,11 +957,6 @@
 
 	h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; }
 
-	.desc {
-		color: var(--color-text-muted);
-		line-height: 1.65;
-		margin-bottom: 1.75rem;
-	}
 
 	/* ── settings ── */
 	.settings {

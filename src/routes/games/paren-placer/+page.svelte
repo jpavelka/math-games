@@ -216,6 +216,35 @@
 	{#if phase === 'idle'}
 		<p class="desc">Add parentheses to make the equation true. Click two numbers to wrap them and everything in between in parentheses.</p>
 
+		<details class="learn-details">
+			<summary>Learn more</summary>
+			<div class="learn-body">
+				<h3>Operator Precedence and Parenthesisation</h3>
+				<p>
+					Parentheses override
+					<a href="https://en.wikipedia.org/wiki/Order_of_operations" target="_blank" rel="noopener">operator precedence</a>,
+					letting you control the order of evaluation. Different parenthesisations of the
+					same sequence of numbers and operators can produce wildly different results.
+				</p>
+				<h4>Catalan numbers</h4>
+				<p>
+					The number of distinct ways to fully parenthesise n + 1 numbers combined with n
+					operators is the nth
+					<a href="https://en.wikipedia.org/wiki/Catalan_number" target="_blank" rel="noopener">Catalan number</a>
+					Cₙ = (2n choose n) / (n + 1).
+					For 4 numbers there are C₃ = 5 bracketings; for 6 numbers, C₅ = 42.
+					Catalan numbers count many combinatorial structures — polygon triangulations,
+					valid bracket sequences, and binary trees.
+				</p>
+				<h4>Expression trees</h4>
+				<p>
+					Every parenthesisation corresponds to a binary tree where leaves are numbers
+					and internal nodes are operators. Evaluating the expression means doing a
+					post-order traversal of the tree.
+				</p>
+			</div>
+		</details>
+
 		<div class="settings">
 			<div class="setting-row">
 				<span class="setting-label">Min numbers</span>
@@ -312,10 +341,6 @@
 		margin-bottom: 0.5rem;
 	}
 
-	.desc {
-		color: var(--color-text-muted);
-		margin-bottom: 2rem;
-	}
 
 	.center {
 		display: flex;

@@ -114,6 +114,34 @@
 		and how many are right but in the wrong position (<strong>cows</strong>).
 	</p>
 
+	<details class="learn-details">
+		<summary>Learn more</summary>
+		<div class="learn-body">
+			<h3>Bulls &amp; Cows and Information Theory</h3>
+			<p>
+				<a href="https://en.wikipedia.org/wiki/Bulls_and_cows" target="_blank" rel="noopener">Bulls and Cows</a>
+				is a pencil-and-paper code-breaking game that predates computing.
+				The 1970 board game <a href="https://en.wikipedia.org/wiki/Mastermind_(board_game)" target="_blank" rel="noopener">Mastermind</a>
+				popularised a colored-peg version.
+			</p>
+			<h4>Information-theoretic strategy</h4>
+			<p>
+				Each response eliminates some fraction of remaining candidate codes.
+				An optimal strategy maximises the minimum information gained per guess,
+				shrinking the candidate pool as fast as possible.
+				<a href="https://en.wikipedia.org/wiki/Information_theory" target="_blank" rel="noopener">Information theory</a>
+				frames this as maximising the entropy of the response distribution.
+			</p>
+			<h4>Knuth's minimax algorithm</h4>
+			<p>
+				Donald Knuth proved in 1977 that Mastermind (4 pegs, 6 colors) can always be solved
+				in at most 5 guesses using a minimax strategy: choose the guess that minimises the
+				worst-case number of remaining possibilities.
+				See: <a href="https://en.wikipedia.org/wiki/Mastermind_(board_game)#Algorithms" target="_blank" rel="noopener">Mastermind algorithms</a>.
+			</p>
+		</div>
+	</details>
+
 	<!-- ══ IDLE ══════════════════════════════════════════════════════════════ -->
 	{#if phase === 'idle'}
 		<div class="settings">
@@ -255,11 +283,6 @@
 
 	h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; }
 
-	.desc {
-		color: var(--color-text-muted);
-		line-height: 1.65;
-		margin-bottom: 1.75rem;
-	}
 
 	/* ── settings ── */
 	.settings {
