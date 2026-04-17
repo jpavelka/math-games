@@ -98,5 +98,21 @@ export const games: Game[] = [
 		categories: ['Graph Theory', 'Combinatorics'],
 		otherNames: ['maximum weight independent set', 'MWIS', 'independent set'],
 		route: '/games/food-cart-festival'
+	},
+	{
+		slug: 'billiards',
+		title: 'Billiard Bounce',
+		description: 'A ball shoots from a corner of an M×N table at 45°. Predict which pocket it lands in. The answer hinges on GCDs and parity — a hidden link between geometry and number theory.',
+		categories: ['Geometry', 'Number Theory'],
+		otherNames: ['billiard ball', 'bouncing ball', 'GCD geometry'],
+		route: '/games/billiards'
+	},
+	{
+		slug: 'factor-chain',
+		title: 'Factor Chain',
+		description: 'Arrange a set of numbers into a chain where every adjacent pair shares a common prime factor. Prime bottlenecks make it trickier than it looks!',
+		categories: ['Number Theory'],
+		otherNames: ['factor path', 'common factor', 'prime factor chain'],
+		route: '/games/factor-chain'
 	}
 ];

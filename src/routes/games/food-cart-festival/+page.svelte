@@ -35,6 +35,29 @@
 		graph ? getConflictingEdgeKeys(selected, graph.edges) : new Set<string>()
 	);
 
+	const adjacentEdges = $derived(
+		graph
+			? new Set(
+				graph.edges
+					.filter(e => (selected.has(e.from) || selected.has(e.to)) && !conflictEdges.has(edgeKey(e.from, e.to)))
+					.map(e => edgeKey(e.from, e.to))
+			)
+			: new Set<string>()
+	);
+
+	const adjacentNodes = $derived(
+		graph
+			? new Set(
+				graph.edges.flatMap(e => {
+					if (conflictEdges.has(edgeKey(e.from, e.to))) return [];
+					if (selected.has(e.from) && !selected.has(e.to)) return [e.to];
+					if (selected.has(e.to) && !selected.has(e.from)) return [e.from];
+					return [];
+				})
+			)
+			: new Set<number>()
+	);
+
 	const score = $derived(
 		graph ? selectionWeight(selected, graph.carts) : 0
 	);
@@ -230,6 +253,7 @@
 						x2={graph.carts[edge.to].x}
 						y2={graph.carts[edge.to].y}
 						class="edge"
+						class:adjacent={adjacentEdges.has(key)}
 						class:conflict={conflictEdges.has(key)}
 						class:flash={flashingEdges.has(key)}
 					/>
@@ -242,6 +266,7 @@
 						const [a, b] = k.split('-').map(Number);
 						return a === cart.id || b === cart.id;
 					})}
+					{@const isAdjacent = !isSelected && adjacentNodes.has(cart.id)}
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<!-- svelte-ignore a11y_interactive_supports_focus -->
 					<g
@@ -249,13 +274,14 @@
 						class="cart"
 						class:selected={isSelected}
 						class:conflicting={isConflicting}
-							role="button"
+						class:adjacent={isAdjacent}
+						role="button"
 						aria-label="{cart.name}, popularity {cart.popularity}{isSelected ? ', selected' : ''}"
 						onclick={() => toggleCart(cart.id)}
 					>
 						<g class:shaking={shakingCarts.has(cart.id)}>
-							<!-- Selection glow -->
-							{#if isSelected}
+							<!-- Selection/adjacency glow -->
+							{#if isSelected || isAdjacent}
 								<circle r={nodeRadius + 7} class="glow-ring" />
 							{/if}
 							<!-- Main circle -->
@@ -449,6 +475,11 @@
 		pointer-events: none;
 	}
 
+	:global(.edge.adjacent) {
+		stroke: #ef444444;
+		stroke-width: 2.5;
+	}
+
 	:global(.edge.conflict) {
 		stroke: #ef4444;
 		stroke-width: 3;
@@ -489,6 +520,11 @@
 
 	:global(.cart.conflicting .glow-ring) {
 		stroke: #ef4444;
+	}
+
+	:global(.cart.adjacent .glow-ring) {
+		stroke: #ef4444;
+		stroke-opacity: 0.25;
 	}
 
 	:global(.cart-emoji) {

@@ -1,0 +1,556 @@
+<script lang="ts">
+	import { base } from '$app/paths';
+	import {
+		generateGame,
+		sharedFactors,
+		sharesFactor,
+		type Difficulty,
+		type GameState,
+		type ChainNum,
+	} from '$lib/factor-chain';
+
+	// ── Settings ───────────────────────────────────────────────────────────────
+	const COUNT_OPTIONS = [8, 10, 12];
+	const DIFFICULTY_OPTIONS: { value: Difficulty; label: string }[] = [
+		{ value: 'easy',   label: 'Easy'   },
+		{ value: 'medium', label: 'Medium' },
+		{ value: 'hard',   label: 'Hard'   },
+	];
+
+	let count      = $state(10);
+	let difficulty = $state<Difficulty>('medium');
+
+	// ── Game state ─────────────────────────────────────────────────────────────
+	type Phase = 'idle' | 'playing';
+
+	let phase           = $state<Phase>('idle');
+	let game            = $state<GameState | null>(null);
+	let chain           = $state<ChainNum[]>([]);
+	let shakingValue    = $state<number | null>(null);
+	let showingSolution = $state(false);
+	let generating      = $state(false);
+
+	// ── Derived ────────────────────────────────────────────────────────────────
+	// perRow chosen so chain always fills exactly 2 rows
+	const perRow   = $derived(!game ? 4 : game.count === 8 ? 4 : game.count === 10 ? 5 : 6);
+	const numRows  = $derived(!game ? 0 : Math.ceil(game.count / perRow));
+	// card 48px wide, connector 36px wide
+	const rowWidth = $derived(perRow * 48 + (perRow - 1) * 36);
+
+	const poolNums  = $derived(game ? game.pool.filter(n => !chain.some(c => c.value === n.value)) : []);
+	const lastChain = $derived(chain.length > 0 ? chain[chain.length - 1] : null);
+	const isWon     = $derived(game !== null && chain.length === game.count);
+
+	// ── Actions ────────────────────────────────────────────────────────────────
+	function startGame() {
+		generating = true;
+		setTimeout(() => {
+			game            = generateGame(count, difficulty);
+			chain           = [];
+			shakingValue    = null;
+			showingSolution = false;
+			phase           = 'playing';
+			generating      = false;
+		}, 20);
+	}
+
+	function reset() {
+		chain           = [];
+		shakingValue    = null;
+		showingSolution = false;
+	}
+
+	function undoLast() {
+		if (chain.length > 0 && !isWon) {
+			chain           = chain.slice(0, -1);
+			showingSolution = false;
+		}
+	}
+
+	function addToChain(num: ChainNum) {
+		if (isWon) return;
+		showingSolution = false;
+		if (lastChain !== null && !sharesFactor(num.value, lastChain.value)) {
+			triggerShake(num.value);
+			return;
+		}
+		chain = [...chain, num];
+	}
+
+	function revealSolution() {
+		if (!game) return;
+		const lookup = new Map(game.pool.map(n => [n.value, n]));
+		chain           = game.solution.map(v => lookup.get(v)!);
+		showingSolution = true;
+	}
+
+	function triggerShake(value: number) {
+		shakingValue = value;
+		setTimeout(() => { if (shakingValue === value) shakingValue = null; }, 400);
+	}
+</script>
+
+<svelte:head>
+	<title>Factor Chain — Math Games</title>
+</svelte:head>
+
+<div class="page">
+	<a href="{base}/" class="back">← Back to games</a>
+	<h1>Factor Chain</h1>
+
+	<p class="desc">
+		Arrange all the numbers into a single chain where each adjacent pair shares a common
+		prime factor. Plan carefully — prime bottlenecks can trap you!
+	</p>
+
+	<!-- ══ IDLE ═════════════════════════════════════════════════════════════════ -->
+	{#if phase === 'idle'}
+		<div class="settings">
+			<div class="setting-row">
+				<span class="setting-label">Length</span>
+				<div class="toggle-group">
+					{#each COUNT_OPTIONS as n}
+						<button class="tog-btn" class:active={count === n} onclick={() => count = n}>{n}</button>
+					{/each}
+				</div>
+			</div>
+			<div class="setting-row">
+				<span class="setting-label">Difficulty</span>
+				<div class="toggle-group">
+					{#each DIFFICULTY_OPTIONS as opt}
+						<button class="tog-btn" class:active={difficulty === opt.value} onclick={() => difficulty = opt.value}>{opt.label}</button>
+					{/each}
+				</div>
+			</div>
+		</div>
+		<div class="center">
+			<button class="btn large" onclick={startGame} disabled={generating}>
+				{generating ? 'Generating…' : 'Build the Chain'}
+			</button>
+		</div>
+
+	<!-- ══ PLAYING ══════════════════════════════════════════════════════════════ -->
+	{:else if phase === 'playing' && game}
+
+		<!-- Status -->
+		<div class="status" class:st-won={isWon}>
+			<div class="st-stats">
+				<span class="st-val">{chain.length}</span>
+				<span class="st-lbl">/ {game.count} placed</span>
+			</div>
+			{#if isWon}
+				<div class="st-msg">🎉 <strong>Complete!</strong> Every number is chained.</div>
+			{:else if showingSolution}
+				<div class="st-msg">💡 One valid solution — see the pattern!</div>
+			{:else if chain.length > 0}
+				<div class="st-msg">Keep going! <button class="inline-link" onclick={revealSolution}>Show solution</button></div>
+			{:else}
+				<div class="st-msg">Click any number below to start your chain.</div>
+			{/if}
+		</div>
+
+		<!-- Chain — snake layout -->
+		<div class="chain-outer">
+			<div class="snake" style="--row-width: {rowWidth}px">
+				{#each { length: numRows } as _, rowIdx}
+					{@const rowStart = rowIdx * perRow}
+					{@const numSlots = Math.min(perRow, game.count - rowStart)}
+
+					<!-- Row of cards -->
+					<div class="snake-row" class:rtl={rowIdx % 2 === 1}>
+						{#each { length: numSlots } as _, colIdx}
+							{@const chainIdx = rowStart + colIdx}
+							{@const num = chainIdx < chain.length ? chain[chainIdx] : null}
+							{@const isLast = chainIdx === chain.length - 1 && !isWon}
+
+							{#if colIdx > 0}
+								{@const prevIdx = rowStart + colIdx - 1}
+								{@const filled = prevIdx < chain.length && chainIdx < chain.length}
+								<div class="h-conn" class:h-filled={filled}>
+									<div class="h-line"></div>
+									{#if filled}
+										{@const shared = sharedFactors(chain[prevIdx].value, chain[chainIdx].value)}
+										<div class="conn-badge">{shared.join(',')}</div>
+									{:else}
+										<div class="h-gap"></div>
+									{/if}
+									<div class="h-line"></div>
+								</div>
+							{/if}
+
+							{#if num !== null}
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<!-- svelte-ignore a11y_interactive_supports_focus -->
+								<div
+									class="chain-card"
+									class:last-card={isLast}
+									role={isLast ? 'button' : undefined}
+									title={isLast ? 'Click to undo' : undefined}
+									onclick={() => isLast && undoLast()}
+								>
+									<div class="card-val">{num.value}</div>
+									{#if isLast}<span class="undo-hint">↩</span>{/if}
+								</div>
+							{:else}
+								<div class="chain-slot"></div>
+							{/if}
+						{/each}
+					</div>
+
+					<!-- Between-row connector -->
+					{#if rowIdx < numRows - 1}
+						{@const lastInRow  = rowStart + perRow - 1}
+						{@const firstInNext = rowStart + perRow}
+						{@const filled = lastInRow < chain.length && firstInNext < chain.length}
+						<div class="v-conn-row" class:rjr={rowIdx % 2 === 0} class:rjl={rowIdx % 2 === 1}>
+							<div class="v-conn" class:v-filled={filled}>
+								<div class="v-line"></div>
+								{#if filled}
+									{@const shared = sharedFactors(chain[lastInRow].value, chain[firstInNext].value)}
+									<div class="conn-badge">{shared.join(',')}</div>
+								{:else}
+									<div class="v-gap"></div>
+								{/if}
+								<div class="v-line"></div>
+							</div>
+						</div>
+					{/if}
+				{/each}
+			</div>
+		</div>
+
+		<!-- Pool -->
+		{#if !isWon}
+			<div class="pool-grid">
+				{#each poolNums as num}
+					{@const canPlace = lastChain === null || sharesFactor(num.value, lastChain.value)}
+					<button
+						class="pool-card"
+						class:can-place={canPlace}
+						class:shaking={shakingValue === num.value}
+						onclick={() => addToChain(num)}
+						aria-label="{num.value}"
+					>
+						<div class="card-val">{num.value}</div>
+					</button>
+				{/each}
+			</div>
+		{/if}
+
+		<!-- Actions -->
+		<div class="actions">
+			<button class="btn btn-ghost" onclick={undoLast} disabled={chain.length === 0 || isWon}>Undo</button>
+			<button class="btn btn-ghost" onclick={reset}>Reset</button>
+			<button class="btn btn-ghost" onclick={() => phase = 'idle'}>New Game</button>
+		</div>
+	{/if}
+</div>
+
+<style>
+	.page { max-width: 520px; margin: 0 auto; }
+
+	.back {
+		display: inline-block;
+		margin-bottom: 1.5rem;
+		color: var(--color-text-muted);
+		font-size: 0.9rem;
+	}
+
+	h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; }
+
+	.desc {
+		color: var(--color-text-muted);
+		line-height: 1.65;
+		margin-bottom: 1.75rem;
+	}
+
+	/* ── Settings ── */
+	.settings {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		padding: 1rem 1.25rem;
+		margin-bottom: 1.75rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.setting-row  { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+	.setting-label {
+		font-size: 0.82rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		min-width: 5rem;
+	}
+
+	.toggle-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+	.tog-btn {
+		padding: 0.3rem 0.9rem;
+		background: var(--color-surface-2);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		color: var(--color-text-muted);
+		font-size: 0.9rem;
+		font-weight: 700;
+		transition: background 0.15s, border-color 0.15s, color 0.15s;
+	}
+
+	.tog-btn:hover:not(.active) { border-color: var(--color-accent); color: var(--color-text); }
+	.tog-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+
+	.center { display: flex; justify-content: center; }
+
+	/* ── Status ── */
+	.status {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		padding: 0.65rem 1rem;
+		margin-bottom: 0.75rem;
+		transition: border-color 0.2s;
+	}
+
+	.status.st-won { border-color: #d4b44a66; }
+
+	.st-stats { display: flex; align-items: baseline; gap: 0.3rem; font-size: 0.85rem; }
+	.st-val   { font-weight: 700; font-variant-numeric: tabular-nums; }
+	.st-lbl   { color: var(--color-text-muted); }
+
+	.st-msg {
+		margin-top: 0.4rem;
+		font-size: 0.85rem;
+		color: var(--color-text-muted);
+	}
+
+	.status.st-won .st-msg { color: #d4b44a; }
+
+	.inline-link {
+		background: none;
+		border: none;
+		padding: 0;
+		margin-left: 0.2rem;
+		color: inherit;
+		text-decoration: underline;
+		cursor: pointer;
+		font-size: inherit;
+		opacity: 0.85;
+	}
+	.inline-link:hover { opacity: 1; }
+
+	/* ── Chain / Snake ── */
+	.chain-outer {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		padding: 1.1rem 1.25rem;
+		margin-bottom: 0.75rem;
+		display: flex;
+		justify-content: center;
+	}
+
+	.snake {
+		display: flex;
+		flex-direction: column;
+		width: var(--row-width);
+	}
+
+	/* Each row */
+	.snake-row {
+		display: flex;
+		align-items: center;
+		width: var(--row-width);
+	}
+
+	.snake-row.rtl { flex-direction: row-reverse; }
+
+	/* Chain card */
+	.chain-card {
+		width: 48px;
+		height: 52px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: #1a3a2a;
+		border: 1.5px solid #4caf6f44;
+		border-radius: 8px;
+		flex-shrink: 0;
+		position: relative;
+		user-select: none;
+	}
+
+	.chain-card.last-card {
+		border-color: #4caf6f;
+		cursor: pointer;
+	}
+
+	.chain-card.last-card:hover { background: #1f4530; }
+
+	.chain-card .card-val { color: #4caf6f; }
+
+	.undo-hint {
+		position: absolute;
+		top: 2px;
+		right: 3px;
+		font-size: 0.55rem;
+		color: #4caf6f88;
+		line-height: 1;
+	}
+
+	/* Empty slot */
+	.chain-slot {
+		width: 48px;
+		height: 52px;
+		border: 1.5px dashed #2a3040;
+		border-radius: 8px;
+		flex-shrink: 0;
+	}
+
+	/* Horizontal connector (between cards in a row) */
+	.h-conn {
+		display: flex;
+		align-items: center;
+		flex-shrink: 0;
+		width: 36px;
+	}
+
+	.h-line {
+		width: 8px;
+		height: 1.5px;
+		background: #2a3040;
+		flex-shrink: 0;
+		transition: background 0.2s;
+	}
+
+	.h-conn.h-filled .h-line { background: #4caf6f33; }
+
+	.h-gap {
+		flex: 1;
+		height: 1.5px;
+		background: #2a3040;
+	}
+
+	/* Between-row connector */
+	.v-conn-row {
+		width: var(--row-width);
+		display: flex;
+	}
+
+	.rjr { justify-content: flex-end; padding-right: 24px; } /* 48px card ÷ 2 */
+	.rjl { justify-content: flex-start; padding-left: 24px; }
+
+	.v-conn {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.v-line {
+		width: 1.5px;
+		height: 8px;
+		background: #2a3040;
+		transition: background 0.2s;
+	}
+
+	.v-conn.v-filled .v-line { background: #4caf6f33; }
+
+	.v-gap {
+		height: 16px;
+		width: 1.5px;
+		background: #2a3040;
+	}
+
+	/* Shared-factor badge (used in both h-conn and v-conn) */
+	.conn-badge {
+		background: #0f2a1a;
+		border: 1px solid #4caf6f55;
+		border-radius: 8px;
+		padding: 1px 5px;
+		font-size: 0.6rem;
+		font-weight: 700;
+		color: #4caf6f;
+		white-space: nowrap;
+		text-align: center;
+		min-width: 16px;
+	}
+
+	/* Card value */
+	.card-val {
+		font-size: 1.15rem;
+		font-weight: 700;
+		line-height: 1;
+		color: var(--color-text);
+	}
+
+	/* ── Pool ── */
+	.pool-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+		gap: 0.4rem;
+		margin-bottom: 1rem;
+	}
+
+	.pool-card {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.65rem 0.3rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.pool-card.can-place {
+		border-color: #f59e0b66;
+		background: #1e1a08;
+	}
+
+	.pool-card.can-place:hover {
+		border-color: #f59e0b;
+		background: #252009;
+	}
+
+	.pool-card:not(.can-place):hover { border-color: var(--color-accent); }
+
+	/* ── Shake ── */
+	@keyframes shake-anim {
+		0%,  100% { transform: translateX(0); }
+		20%        { transform: translateX(-5px); }
+		40%        { transform: translateX(5px); }
+		60%        { transform: translateX(-4px); }
+		80%        { transform: translateX(4px); }
+	}
+
+	.shaking { animation: shake-anim 0.4s ease; }
+
+	/* ── Actions ── */
+	.actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+
+	/* ── Buttons ── */
+	.btn {
+		padding: 0.7rem 1.4rem;
+		background: var(--color-accent);
+		color: #fff;
+		border: none;
+		border-radius: var(--radius);
+		font-size: 1rem;
+		font-weight: 600;
+		transition: background 0.2s;
+	}
+
+	.btn:hover:not(:disabled) { background: var(--color-accent-hover); }
+	.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+	.btn.large { padding: 0.9rem 2rem; font-size: 1.05rem; }
+
+	.btn-ghost {
+		background: var(--color-surface-2);
+		color: var(--color-text);
+		border: 1px solid var(--color-border);
+	}
+
+	.btn-ghost:hover:not(:disabled) { background: var(--color-surface); border-color: var(--color-accent); }
+</style>
