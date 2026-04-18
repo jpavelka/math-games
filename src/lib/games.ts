@@ -114,5 +114,13 @@ export const games: Game[] = [
 		categories: ['Number Theory'],
 		otherNames: ['factor path', 'common factor', 'prime factor chain'],
 		route: '/games/factor-chain'
+	},
+	{
+		slug: 'nim',
+		title: 'Nim',
+		description: 'Take turns removing objects from piles. Choose any pile and take as many as you like — the player who takes the last object wins.',
+		categories: ['Combinatorics', 'Logic'],
+		otherNames: ['nim game', 'matchsticks', 'stones'],
+		route: '/games/nim'
 	}
 ];
