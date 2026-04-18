@@ -43,8 +43,8 @@
 	let winner        = $state<1 | 2 | null>(null);
 	let thinking        = $state(false);
 	let compMovePreview = $state<{ pileIdx: number; newSize: number } | null>(null);
-	let hoverPile     = $state(-1);
-	let hoverIdx      = $state(-1);
+	let selectedPile  = $state(-1);
+	let hoverCount    = $state(-1);
 
 	// ── Derived ─────────────────────────────────────────────────────────────────
 	const computerPlayer    = $derived<1 | 2>(compOrder === 'first' ? 1 : 2);
@@ -118,8 +118,8 @@
 		winner          = null;
 		thinking        = false;
 		compMovePreview = null;
-		hoverPile       = -1;
-		hoverIdx        = -1;
+		selectedPile    = -1;
+		hoverCount      = -1;
 		phase           = 'playing';
 	}
 
@@ -129,17 +129,17 @@
 		winner          = null;
 		thinking        = false;
 		compMovePreview = null;
-		hoverPile       = -1;
-		hoverIdx        = -1;
+		selectedPile    = -1;
+		hoverCount      = -1;
 		phase           = 'playing';
 	}
 
 	// Clicking object at oIdx keeps 0..oIdx-1, removes oIdx..end.
 	function takeObjects(pileIdx: number, oIdx: number) {
 		if (phase !== 'playing') return;
-		piles     = piles.map((p, i) => i === pileIdx ? oIdx : p);
-		hoverPile = -1;
-		hoverIdx  = -1;
+		piles        = piles.map((p, i) => i === pileIdx ? oIdx : p);
+		selectedPile = -1;
+		hoverCount   = -1;
 		if (piles.every(p => p === 0)) {
 			winner = variant === 'normal' ? currentPlayer : (currentPlayer === 1 ? 2 : 1);
 			phase  = 'won';
@@ -148,7 +148,7 @@
 		}
 	}
 
-	function clearHover() { hoverPile = -1; hoverIdx = -1; }
+	function clearSelection() { selectedPile = -1; hoverCount = -1; }
 
 	// ── Computer turn trigger ───────────────────────────────────────────────────
 	$effect(() => {
@@ -300,10 +300,10 @@
 				<div class="turn-row">
 					{#if opponent === 'computer'}
 						<span class="you-badge">Your</span>
-						<span class="turn-hint">&nbsp;turn — click any object in a pile to take it and all to its right</span>
+						<span class="turn-hint">&nbsp;turn — tap a pile, then choose how many to take</span>
 					{:else}
 						<span class="player-badge p{currentPlayer}">Player {currentPlayer}</span>
-						<span class="turn-hint">'s turn — click any object in a pile to take it and all to its right</span>
+						<span class="turn-hint">'s turn — tap a pile, then choose how many to take</span>
 					{/if}
 				</div>
 			{/if}
@@ -340,37 +340,44 @@
 
 		<!-- Piles -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="piles-area" onmouseleave={clearHover}>
+		<div class="piles-area">
 			{#each piles as pileSize, pIdx}
-				<div class="pile-row">
+				{@const isSelected = selectedPile === pIdx}
+				{@const disabled   = phase !== 'playing' || isComputersTurn || thinking}
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<div
+					class="pile-row"
+					class:selected={isSelected}
+					class:selectable={!disabled && pileSize > 0}
+					onclick={() => { if (!disabled && pileSize > 0) selectedPile = isSelected ? -1 : pIdx; }}
+				>
 					<span class="pile-label">Pile {pIdx + 1}</span>
 					<div class="objects">
 						{#if pileSize === 0}
 							<span class="pile-empty">empty</span>
 						{:else}
 							{#each {length: pileSize} as _, oIdx}
-								{@const removing    = hoverPile === pIdx && hoverIdx !== -1 && oIdx >= hoverIdx}
+								{@const removing    = isSelected && hoverCount > 0 && oIdx >= pileSize - hoverCount}
 								{@const pulseRemove = compMovePreview !== null && compMovePreview.pileIdx === pIdx && oIdx >= compMovePreview.newSize}
-								{@const disabled    = phase !== 'playing' || isComputersTurn || thinking}
-								<button
-									class="obj"
-									class:removing
-									class:pulse-remove={pulseRemove}
-									class:disabled
-									onmouseenter={() => { if (!disabled) { hoverPile = pIdx; hoverIdx = oIdx; } }}
-									onclick={() => { if (!disabled) takeObjects(pIdx, oIdx); }}
-									aria-label="Take {pileSize - oIdx} from pile {pIdx + 1}"
-								></button>
+								<span class="obj" class:removing class:pulse-remove={pulseRemove} class:disabled></span>
 							{/each}
 						{/if}
 					</div>
 					<span class="pile-count">{pileSize}</span>
-					{#if hoverPile === pIdx && hoverIdx !== -1 && pileSize > 0}
-						<span class="take-preview">take {pileSize - hoverIdx}</span>
-					{:else}
-						<span class="take-preview-placeholder"></span>
-					{/if}
 				</div>
+				{#if isSelected && pileSize > 0 && !disabled}
+					<div class="count-buttons">
+						<span class="take-label">take:</span>
+						{#each {length: pileSize} as _, n}
+							<button
+								class="count-btn"
+								onmouseenter={() => hoverCount = n + 1}
+								onmouseleave={() => hoverCount = -1}
+								onclick={(e) => { e.stopPropagation(); hoverCount = -1; takeObjects(pIdx, pileSize - (n + 1)); }}
+							>{n + 1}</button>
+						{/each}
+					</div>
+				{/if}
 			{/each}
 		</div>
 
@@ -658,26 +665,56 @@
 
 	.pile-count { font-size: 0.78rem; font-weight: 600; color: var(--color-text-muted); min-width: 1.5ch; text-align: right; font-variant-numeric: tabular-nums; }
 
-	.take-preview { font-size: 0.75rem; font-weight: 600; color: #f87171; min-width: 4rem; font-style: italic; }
-	.take-preview-placeholder { min-width: 4rem; }
+	.pile-row.selectable { cursor: pointer; }
+	.pile-row.selectable:hover { background: var(--color-surface-2); border-radius: var(--radius-sm); }
+	.pile-row.selected { background: color-mix(in srgb, var(--color-accent) 8%, transparent); border-radius: var(--radius-sm); }
+
+	/* ── Count buttons ── */
+	.count-buttons {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		flex-wrap: wrap;
+		padding: 0.3rem 0.5rem 0.3rem 3.5rem;
+	}
+
+	.take-label {
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		margin-right: 0.1rem;
+	}
+
+	.count-btn {
+		min-width: 2rem;
+		height: 2rem;
+		padding: 0 0.35rem;
+		background: var(--color-surface-2);
+		border: 1.5px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		font-size: 0.85rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text);
+		transition: background 0.1s, border-color 0.1s, color 0.1s;
+	}
+
+	.count-btn:hover { background: #3a1515; border-color: #f87171; color: #f87171; }
 
 	/* ── Object circles ── */
 	.obj {
+		display: inline-block;
 		width: 28px;
 		height: 28px;
 		border-radius: 50%;
-		background: var(--color-surface-2);
-		border: 1.5px solid var(--color-border);
-		padding: 0;
+		background: #2e3350;
+		border: 1.5px solid #4a527a;
 		flex-shrink: 0;
-		cursor: pointer;
 		transition: background 0.1s, border-color 0.1s;
 	}
 
-	.obj:not(.disabled):hover { border-color: var(--color-accent); }
-
 	.obj.removing { background: #3a1515; border-color: #f87171; }
-	.obj.disabled { cursor: default; opacity: 0.55; }
+	.obj.disabled { opacity: 0.55; }
 
 	@keyframes pulse-remove {
 		0%, 100% { transform: scale(1);    background: #3a1515; border-color: #f87171; box-shadow: none; }
