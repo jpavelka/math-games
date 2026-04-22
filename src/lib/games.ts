@@ -122,5 +122,13 @@ export const games: Game[] = [
 		categories: ['Combinatorics', 'Logic'],
 		otherNames: ['nim game', 'matchsticks', 'stones'],
 		route: '/games/nim'
+	},
+	{
+		slug: 'angle-estimate',
+		title: 'Angle Estimation',
+		description: 'An angle appears on screen — no labels, no protractor. Guess how many degrees it is. Score based on accuracy.',
+		categories: ['Geometry'],
+		otherNames: ['angle', 'degrees', 'protractor', 'estimation'],
+		route: '/games/angle-estimate'
 	}
 ];
