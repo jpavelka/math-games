@@ -41,16 +41,21 @@
 	let initialPiles  = $state<number[]>([]);
 	let currentPlayer = $state<1 | 2>(1);
 	let winner        = $state<1 | 2 | null>(null);
-	let thinking        = $state(false);
-	let compMovePreview = $state<{ pileIdx: number; newSize: number } | null>(null);
+	let thinking          = $state(false);
+	let compMovePreview   = $state<{ pileIdx: number; newSize: number } | null>(null);
+	let playerMovePreview = $state<{ pileIdx: number; newSize: number } | null>(null);
 	let selectedPile  = $state(-1);
 	let hoverCount    = $state(-1);
+	let playerMoveTimer: ReturnType<typeof setTimeout> | null = null;
+
+	let showBinary = $state(false);
 
 	// ── Derived ─────────────────────────────────────────────────────────────────
 	const computerPlayer    = $derived<1 | 2>(compOrder === 'first' ? 1 : 2);
 	const isComputersTurn   = $derived(opponent === 'computer' && phase === 'playing' && currentPlayer === computerPlayer);
 	const nimSum            = $derived(piles.reduce((xor, p) => xor ^ p, 0));
 	const allPilesAtMostOne = $derived(piles.every(p => p <= 1));
+	const maxBits           = $derived(Math.max(1, ...piles.map(p => p > 0 ? Math.floor(Math.log2(p)) + 1 : 1), nimSum > 0 ? Math.floor(Math.log2(nimSum)) + 1 : 1));
 	const isLosingPosition  = $derived(
 		variant === 'normal'
 			? nimSum === 0
@@ -111,7 +116,13 @@
 	}
 
 	// ── Actions ─────────────────────────────────────────────────────────────────
+	function clearPlayerTimer() {
+		if (playerMoveTimer !== null) { clearTimeout(playerMoveTimer); playerMoveTimer = null; }
+		playerMovePreview = null;
+	}
+
 	function startGame() {
+		clearPlayerTimer();
 		initialPiles    = [...customPiles];
 		piles           = [...initialPiles];
 		currentPlayer   = 1;
@@ -124,6 +135,7 @@
 	}
 
 	function playAgain() {
+		clearPlayerTimer();
 		piles           = [...initialPiles];
 		currentPlayer   = 1;
 		winner          = null;
@@ -149,6 +161,21 @@
 	}
 
 	function clearSelection() { selectedPile = -1; hoverCount = -1; }
+
+	function previewPlayerMove(pIdx: number, newSize: number) {
+		selectedPile      = -1;
+		hoverCount        = -1;
+		playerMovePreview = { pileIdx: pIdx, newSize };
+		playerMoveTimer   = setTimeout(() => {
+			playerMovePreview = null;
+			playerMoveTimer   = null;
+			takeObjects(pIdx, newSize);
+		}, 600);
+	}
+
+	function toBits(n: number, bits: number): number[] {
+		return Array.from({ length: bits }, (_, i) => (n >> (bits - 1 - i)) & 1);
+	}
 
 	// ── Computer turn trigger ───────────────────────────────────────────────────
 	$effect(() => {
@@ -336,14 +363,49 @@
 					</span>
 				{/if}
 			{/if}
+			<span class="nim-strip-sep"></span>
+			<span class="nim-strip-lbl">Binary</span>
+			<button class="tog-btn sm" class:active={showBinary} onclick={() => showBinary = !showBinary}>
+				{showBinary ? 'On' : 'Off'}
+			</button>
 		</div>
+
+		<!-- Binary breakdown table -->
+		{#if showBinary}
+			<div class="binary-table">
+				<div class="bin-row bin-header-row">
+					<span class="bin-name"></span>
+					<span class="bin-dec"></span>
+					{#each {length: maxBits} as _, b}
+						<span class="bin-bit bin-hdr">2<sup>{maxBits - 1 - b}</sup></span>
+					{/each}
+				</div>
+				{#each piles as pileSize, pIdx}
+					<div class="bin-row">
+						<span class="bin-name">Pile {pIdx + 1}</span>
+						<span class="bin-dec">{pileSize}</span>
+						{#each toBits(pileSize, maxBits) as bit}
+							<span class="bin-bit" class:bin-one={bit === 1}>{bit}</span>
+						{/each}
+					</div>
+				{/each}
+				<div class="bin-divider"></div>
+				<div class="bin-row bin-xor-row">
+					<span class="bin-name">XOR</span>
+					<span class="bin-dec" class:bin-xor-zero={nimSum === 0 && phase !== 'won'}>{nimSum}</span>
+					{#each toBits(nimSum, maxBits) as bit}
+						<span class="bin-bit bin-xor-bit" class:bin-one={bit === 1}>{bit}</span>
+					{/each}
+				</div>
+			</div>
+		{/if}
 
 		<!-- Piles -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="piles-area">
 			{#each piles as pileSize, pIdx}
 				{@const isSelected = selectedPile === pIdx}
-				{@const disabled   = phase !== 'playing' || isComputersTurn || thinking}
+				{@const disabled   = phase !== 'playing' || isComputersTurn || thinking || playerMovePreview !== null}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<div
 					class="pile-row"
@@ -358,7 +420,7 @@
 						{:else}
 							{#each {length: pileSize} as _, oIdx}
 								{@const removing    = isSelected && hoverCount > 0 && oIdx >= pileSize - hoverCount}
-								{@const pulseRemove = compMovePreview !== null && compMovePreview.pileIdx === pIdx && oIdx >= compMovePreview.newSize}
+								{@const pulseRemove = (compMovePreview !== null && compMovePreview.pileIdx === pIdx && oIdx >= compMovePreview.newSize) || (playerMovePreview !== null && playerMovePreview.pileIdx === pIdx && oIdx >= playerMovePreview.newSize)}
 								<span class="obj" class:removing class:pulse-remove={pulseRemove} class:disabled></span>
 							{/each}
 						{/if}
@@ -373,7 +435,7 @@
 								class="count-btn"
 								onmouseenter={() => hoverCount = n + 1}
 								onmouseleave={() => hoverCount = -1}
-								onclick={(e) => { e.stopPropagation(); hoverCount = -1; takeObjects(pIdx, pileSize - (n + 1)); }}
+								onclick={(e) => { e.stopPropagation(); previewPlayerMove(pIdx, pileSize - (n + 1)); }}
 							>{n + 1}</button>
 						{/each}
 					</div>
@@ -724,6 +786,84 @@
 	.obj.pulse-remove {
 		animation: pulse-remove 0.45s ease-in-out infinite;
 	}
+
+	/* ── Binary table ── */
+	.nim-strip-sep {
+		display: inline-block;
+		width: 1px;
+		height: 1rem;
+		background: var(--color-border);
+		margin: 0 0.15rem;
+		align-self: center;
+	}
+
+	.binary-table {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		padding: 0.6rem 0.9rem;
+		margin-bottom: 0.75rem;
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 0.82rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+
+	.bin-row {
+		display: flex;
+		align-items: baseline;
+		gap: 0;
+	}
+
+	.bin-name {
+		min-width: 4.5rem;
+		color: var(--color-text-muted);
+		font-size: 0.78rem;
+		font-family: inherit;
+	}
+
+	.bin-dec {
+		min-width: 2rem;
+		text-align: right;
+		font-weight: 700;
+		color: var(--color-text);
+		padding-right: 0.65rem;
+	}
+
+	.bin-bit {
+		min-width: 1.6rem;
+		text-align: center;
+		color: var(--color-text-muted);
+		font-weight: 600;
+		padding: 0 0.1rem;
+	}
+
+	.bin-bit.bin-hdr {
+		font-size: 0.68rem;
+		color: var(--color-text-muted);
+		font-weight: 400;
+		font-family: inherit;
+	}
+
+	.bin-bit.bin-hdr sup { font-size: 0.6rem; }
+
+	.bin-bit.bin-one { color: var(--color-accent); font-weight: 800; }
+
+	.bin-header-row { margin-bottom: 0.1rem; }
+
+	.bin-divider {
+		height: 1px;
+		background: var(--color-border);
+		margin: 0.15rem 0;
+	}
+
+	.bin-xor-row .bin-name {
+		font-weight: 700;
+		color: var(--color-text);
+	}
+
+	.bin-xor-zero { color: #f87171; }
 
 	/* ── Actions ── */
 	.actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
