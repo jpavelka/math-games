@@ -119,9 +119,17 @@ export const games: Game[] = [
 		slug: 'nim',
 		title: 'Nim',
 		description: 'Take turns removing objects from piles. Choose any pile and take as many as you like — the player who takes the last object wins.',
-		categories: ['Combinatorics', 'Logic'],
+		categories: ['Logic'],
 		otherNames: ['nim game', 'matchsticks', 'stones'],
 		route: '/games/nim'
+	},
+	{
+		slug: 'hackenbush',
+		title: 'Hackenbush',
+		description: 'Take turns removing any edge from the graph. Any edges that lose their connection to the ground vanish too. Last to move wins.',
+		categories: ['Logic'],
+		otherNames: ['hackenbush', 'combinatorial game', 'sprague grundy', 'nim on graphs'],
+		route: '/games/hackenbush'
 	},
 	{
 		slug: 'angle-estimate',
