@@ -5,7 +5,7 @@
 
 	const MAX_VAL_OPTIONS   = [5, 10, 12, 20, 50];
 	const TOTAL_OPTIONS     = [5, 10, 15, 20, 30, 50];
-	const TIME_OPTIONS      = [3, 5, 10, 15, 20];
+	const TIME_OPTIONS      = [3, 5, 10, 15, 30, 60];
 
 	// ── settings (persist across games) ──────────────────────────────────────
 	let opAdd    = $state(false);
