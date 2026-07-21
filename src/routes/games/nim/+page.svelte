@@ -43,10 +43,9 @@
 	let winner        = $state<1 | 2 | null>(null);
 	let thinking          = $state(false);
 	let compMovePreview   = $state<{ pileIdx: number; newSize: number } | null>(null);
-	let playerMovePreview = $state<{ pileIdx: number; newSize: number } | null>(null);
+	let pendingMove       = $state<{ pileIdx: number; newSize: number } | null>(null);
 	let selectedPile  = $state(-1);
 	let hoverCount    = $state(-1);
-	let playerMoveTimer: ReturnType<typeof setTimeout> | null = null;
 
 	let showBinary = $state(false);
 
@@ -116,13 +115,8 @@
 	}
 
 	// ── Actions ─────────────────────────────────────────────────────────────────
-	function clearPlayerTimer() {
-		if (playerMoveTimer !== null) { clearTimeout(playerMoveTimer); playerMoveTimer = null; }
-		playerMovePreview = null;
-	}
-
 	function startGame() {
-		clearPlayerTimer();
+		pendingMove     = null;
 		initialPiles    = [...customPiles];
 		piles           = [...initialPiles];
 		currentPlayer   = 1;
@@ -135,7 +129,7 @@
 	}
 
 	function playAgain() {
-		clearPlayerTimer();
+		pendingMove     = null;
 		piles           = [...initialPiles];
 		currentPlayer   = 1;
 		winner          = null;
@@ -162,15 +156,22 @@
 
 	function clearSelection() { selectedPile = -1; hoverCount = -1; }
 
-	function previewPlayerMove(pIdx: number, newSize: number) {
-		selectedPile      = -1;
-		hoverCount        = -1;
-		playerMovePreview = { pileIdx: pIdx, newSize };
-		playerMoveTimer   = setTimeout(() => {
-			playerMovePreview = null;
-			playerMoveTimer   = null;
-			takeObjects(pIdx, newSize);
-		}, 600);
+	// Second click stages a move for confirmation — keep the pile selected so
+	// Cancel can restore the count buttons.
+	function requestMove(pIdx: number, newSize: number) {
+		hoverCount  = -1;
+		pendingMove = { pileIdx: pIdx, newSize };
+	}
+
+	function confirmMove() {
+		if (pendingMove === null) return;
+		const { pileIdx, newSize } = pendingMove;
+		pendingMove = null;
+		takeObjects(pileIdx, newSize);
+	}
+
+	function cancelMove() {
+		pendingMove = null; // selectedPile stays set → count buttons reappear
 	}
 
 	function toBits(n: number, bits: number): number[] {
@@ -327,10 +328,10 @@
 				<div class="turn-row">
 					{#if opponent === 'computer'}
 						<span class="you-badge">Your</span>
-						<span class="turn-hint">&nbsp;turn — tap a pile, then choose how many to take</span>
+						<span class="turn-hint">&nbsp;turn — tap a pile, choose how many to take, then confirm</span>
 					{:else}
 						<span class="player-badge p{currentPlayer}">Player {currentPlayer}</span>
-						<span class="turn-hint">'s turn — tap a pile, then choose how many to take</span>
+						<span class="turn-hint">'s turn — tap a pile, choose how many to take, then confirm</span>
 					{/if}
 				</div>
 			{/if}
@@ -405,7 +406,7 @@
 		<div class="piles-area">
 			{#each piles as pileSize, pIdx}
 				{@const isSelected = selectedPile === pIdx}
-				{@const disabled   = phase !== 'playing' || isComputersTurn || thinking || playerMovePreview !== null}
+				{@const disabled   = phase !== 'playing' || isComputersTurn || thinking || pendingMove !== null}
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<div
 					class="pile-row"
@@ -419,8 +420,8 @@
 							<span class="pile-empty">empty</span>
 						{:else}
 							{#each {length: pileSize} as _, oIdx}
-								{@const removing    = isSelected && hoverCount > 0 && oIdx >= pileSize - hoverCount}
-								{@const pulseRemove = (compMovePreview !== null && compMovePreview.pileIdx === pIdx && oIdx >= compMovePreview.newSize) || (playerMovePreview !== null && playerMovePreview.pileIdx === pIdx && oIdx >= playerMovePreview.newSize)}
+								{@const removing    = (isSelected && hoverCount > 0 && oIdx >= pileSize - hoverCount) || (pendingMove !== null && pendingMove.pileIdx === pIdx && oIdx >= pendingMove.newSize)}
+								{@const pulseRemove = compMovePreview !== null && compMovePreview.pileIdx === pIdx && oIdx >= compMovePreview.newSize}
 								<span class="obj" class:removing class:pulse-remove={pulseRemove} class:disabled></span>
 							{/each}
 						{/if}
@@ -435,9 +436,16 @@
 								class="count-btn"
 								onmouseenter={() => hoverCount = n + 1}
 								onmouseleave={() => hoverCount = -1}
-								onclick={(e) => { e.stopPropagation(); previewPlayerMove(pIdx, pileSize - (n + 1)); }}
+								onclick={(e) => { e.stopPropagation(); requestMove(pIdx, pileSize - (n + 1)); }}
 							>{n + 1}</button>
 						{/each}
+					</div>
+				{/if}
+				{#if pendingMove !== null && pendingMove.pileIdx === pIdx}
+					<div class="confirm-row">
+						<span class="confirm-label">Remove {pileSize - pendingMove.newSize} from Pile {pIdx + 1}?</span>
+						<button class="confirm-btn" onclick={confirmMove}>Confirm</button>
+						<button class="cancel-btn"  onclick={cancelMove}>Cancel</button>
 					</div>
 				{/if}
 			{/each}
@@ -762,6 +770,48 @@
 	}
 
 	.count-btn:hover { background: #3a1515; border-color: #f87171; color: #f87171; }
+
+	/* ── Confirm / Cancel row ── */
+	.confirm-row {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+		padding: 0.3rem 0.5rem 0.3rem 3.5rem;
+	}
+
+	.confirm-label {
+		font-size: 0.78rem;
+		font-weight: 600;
+		color: var(--color-text-muted);
+		margin-right: 0.15rem;
+	}
+
+	.confirm-btn,
+	.cancel-btn {
+		height: 2rem;
+		padding: 0 0.85rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.85rem;
+		font-weight: 700;
+		transition: background 0.15s, border-color 0.15s, color 0.15s;
+	}
+
+	.confirm-btn {
+		background: var(--color-accent);
+		border: 1.5px solid var(--color-accent);
+		color: #fff;
+	}
+
+	.confirm-btn:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+
+	.cancel-btn {
+		background: var(--color-surface-2);
+		border: 1.5px solid var(--color-border);
+		color: var(--color-text);
+	}
+
+	.cancel-btn:hover { border-color: var(--color-accent); }
 
 	/* ── Object circles ── */
 	.obj {

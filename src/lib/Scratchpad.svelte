@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
+
 	let { onclose, width = $bindable(320) }: { onclose: () => void; width?: number } = $props();
 
 	// ── resize handle ─────────────────────────────────────────────────────────
@@ -37,7 +39,14 @@
 	let activeStroke: Stroke | null = null; // plain var – mutated directly, redrawn manually
 	let penColor = $state(COLORS[0]);
 	let penWidth = $state(WIDTHS[1]);
-	let tool = $state<'draw' | 'pan'>('draw');
+	let tool = $state<'draw' | 'pan' | 'erase'>('draw');
+
+	// The eraser erases a swath this many times wider than the selected pen width
+	const ERASER_SCALE = 6;
+	let eraserWidth = $derived(penWidth * ERASER_SCALE);
+
+	// Eraser preview ring — screen-space cursor position (CSS px, relative to canvas)
+	let cursorPos = $state<{ x: number; y: number } | null>(null);
 
 	// ── pan / viewport ───────────────────────────────────────────────────────
 	let offsetX = 0; // world-space scroll offset in CSS px
@@ -61,6 +70,16 @@
 		const ro = new ResizeObserver(resize);
 		ro.observe(wrapperEl);
 		return () => ro.disconnect();
+	});
+
+	// Switching tools must not leave a stale frame on screen: drop any lingering
+	// eraser ring and repaint immediately (rather than waiting for the next stroke).
+	$effect(() => {
+		tool; // re-run only when the tool changes
+		untrack(() => {
+			cursorPos = null;
+			resize();
+		});
 	});
 
 	function resize() {
@@ -122,10 +141,17 @@
 		return { x: e.clientX - rect.left + offsetX, y: e.clientY - rect.top + offsetY };
 	}
 
+	// Tracks the pointer in screen space (CSS px, relative to canvas) for the eraser ring
+	function updateCursor(e: PointerEvent) {
+		const rect = canvasEl!.getBoundingClientRect();
+		cursorPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+	}
+
 	function onPointerDown(e: PointerEvent) {
 		e.preventDefault();
 		canvasEl!.setPointerCapture(e.pointerId);
 		pointerPositions.set(e.pointerId, { x: e.clientX, y: e.clientY });
+		updateCursor(e);
 
 		if (pointerPositions.size >= 2) {
 			// Second finger — abort any single-finger action and start two-finger pan
@@ -145,7 +171,11 @@
 				panning = true;
 				panOrigin = { px: e.clientX, py: e.clientY, ox: offsetX, oy: offsetY };
 			} else {
-				activeStroke = { points: [getPos(e)], color: penColor, width: penWidth };
+				activeStroke = {
+						points: [getPos(e)],
+						color: tool === 'erase' ? BG : penColor,
+						width: tool === 'erase' ? eraserWidth : penWidth
+					};
 				redraw();
 			}
 		}
@@ -154,6 +184,7 @@
 	function onPointerMove(e: PointerEvent) {
 		e.preventDefault();
 		pointerPositions.set(e.pointerId, { x: e.clientX, y: e.clientY });
+		updateCursor(e);
 
 		if (twoFingerOrigin && pointerPositions.size >= 2) {
 			const pts = [...pointerPositions.values()];
@@ -179,6 +210,9 @@
 			twoFingerOrigin = null;
 		}
 
+		// Touch has no hover, so hide the eraser ring once the finger lifts
+		if (e.pointerType === 'touch') cursorPos = null;
+
 		if (pointerPositions.size === 0) {
 			if (tool === 'pan') {
 				panning = false;
@@ -202,6 +236,12 @@
 		activeStroke = null;
 		panOrigin = null;
 		panning = false;
+		cursorPos = null;
+	}
+
+	function onPointerLeave() {
+		// Hide the eraser ring when the mouse leaves the canvas (ignored mid-drag via capture)
+		if (pointerPositions.size === 0) cursorPos = null;
 	}
 
 	function undo() {
@@ -294,6 +334,24 @@
 			>✎</button>
 			<button
 				class="tool-btn"
+				class:active={tool === 'erase'}
+				onclick={() => (tool = 'erase')}
+				title="Erase"
+			>
+				<svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true">
+					<path
+						d="M8.5 20.5 3.9 15.9a2 2 0 0 1 0-2.8l8.7-8.7a2 2 0 0 1 2.8 0l4.6 4.6a2 2 0 0 1 0 2.8l-8 8Z"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						stroke-linejoin="round"
+					/>
+					<path d="M8.5 20.5H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+					<path d="m9.5 9.5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+				</svg>
+			</button>
+			<button
+				class="tool-btn"
 				class:active={tool === 'pan'}
 				onclick={() => (tool = 'pan')}
 				title="Pan"
@@ -313,12 +371,25 @@
 		<div class="canvas-wrapper" bind:this={wrapperEl}>
 			<canvas
 				bind:this={canvasEl}
-				style="display:block;touch-action:none;cursor:{tool === 'pan' ? (panning ? 'grabbing' : 'grab') : 'crosshair'}"
+				style="display:block;touch-action:none;cursor:{tool === 'pan'
+					? panning
+						? 'grabbing'
+						: 'grab'
+					: tool === 'erase'
+						? 'none'
+						: 'crosshair'}"
 				onpointerdown={onPointerDown}
 				onpointermove={onPointerMove}
 				onpointerup={onPointerUp}
 				onpointercancel={onPointerCancel}
+				onpointerleave={onPointerLeave}
 			></canvas>
+			{#if tool === 'erase' && cursorPos}
+				<div
+					class="eraser-cursor"
+					style="left:{cursorPos.x}px;top:{cursorPos.y}px;width:{eraserWidth}px;height:{eraserWidth}px"
+				></div>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -539,6 +610,12 @@
 		cursor: default;
 	}
 
+	.tool-icon {
+		width: 16px;
+		height: 16px;
+		display: block;
+	}
+
 	/* ── canvas ── */
 	.canvas-wrapper {
 		flex: 1;
@@ -549,5 +626,16 @@
 	.canvas-wrapper canvas {
 		position: absolute;
 		inset: 0;
+	}
+
+	/* Ring showing the eraser footprint under the cursor */
+	.eraser-cursor {
+		position: absolute;
+		box-sizing: border-box;
+		border-radius: 50%;
+		border: 1px solid rgba(255, 255, 255, 0.9);
+		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+		transform: translate(-50%, -50%);
+		pointer-events: none;
 	}
 </style>
