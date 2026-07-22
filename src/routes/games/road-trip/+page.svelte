@@ -284,6 +284,15 @@
 		}, 0);
 	}
 
+	function retryGame() {
+		// Reset the current map: keep the same cities (and the already-computed
+		// optimal tour), but clear the route so the user can try again.
+		path        = [];
+		hovered     = null;
+		phase       = 'playing';
+		showOptimal = false;
+	}
+
 	function clickCity(i: number) {
 		if (isDrag || phase !== 'playing' || path.includes(i)) return;
 		path = [...path, i];
@@ -477,6 +486,52 @@
 		return s;
 	});
 
+	const optimalEdges = $derived.by(() => {
+		const s = new Set<string>();
+		const t = optimalTour;
+		if (!t || t.length < 2) return s;
+		for (let k = 0; k < t.length; k++) {
+			const a = t[k], b = t[(k + 1) % t.length]; // % closes the loop
+			s.add(`${a},${b}`); s.add(`${b},${a}`);    // both orientations
+		}
+		return s;
+	});
+
+	// User edges that are not part of the optimal tour ("detours"), revealed
+	// alongside the optimal path when the submitted route was suboptimal.
+	const detourSegs = $derived.by(() => {
+		if (!showOptimal || optimalEdges.size === 0) return [];
+		// include the closing edge (last -> first) once the route is submitted
+		const seq = phase === 'done' && path.length >= 2 ? [...path, path[0]] : path;
+		const segs: { x1: number; y1: number; x2: number; y2: number }[] = [];
+		for (let k = 0; k < seq.length - 1; k++) {
+			const a = seq[k], b = seq[k + 1];
+			if (!optimalEdges.has(`${a},${b}`)) {
+				const [x1, y1] = pts[a], [x2, y2] = pts[b];
+				segs.push({ x1, y1, x2, y2 });
+			}
+		}
+		return segs;
+	});
+
+	// "×" marks spaced evenly along each detour segment, at a constant screen
+	// spacing regardless of zoom (PX makes the spacing/positions reactive).
+	const detourMarks = $derived.by(() => {
+		const marks: { x: number; y: number }[] = [];
+		const spacing = 18 * PX;
+		for (const seg of detourSegs) {
+			const dx = seg.x2 - seg.x1, dy = seg.y2 - seg.y1;
+			const len = Math.hypot(dx, dy);
+			if (len === 0) continue;
+			const count = Math.max(1, Math.round(len / spacing));
+			for (let k = 0; k < count; k++) {
+				const t = (k + 0.5) / count;
+				marks.push({ x: seg.x1 + dx * t, y: seg.y1 + dy * t });
+			}
+		}
+		return marks;
+	});
+
 	function cellBg(d: number): string {
 		const { min, max } = distStats;
 		const t = (d - min) / (max - min); // 0 = shortest, 1 = longest
@@ -541,7 +596,7 @@
 	let dialogEl    = $state<HTMLDialogElement | null>(null);
 
 	function openPositionDialog(cityIdx: number) {
-		if (isDrag || phase === 'idle') return;
+		if (isDrag || phase !== 'playing') return;
 		dialogCity  = cityIdx;
 		const pos   = path.indexOf(cityIdx);
 		dialogInput = pos >= 0 ? String(pos + 1) : String(path.length + 1);
@@ -588,6 +643,8 @@
 		A set of US cities appears on the map. Visit every city exactly once
 		and return to your starting point — in as few kilometres as possible.
 		Click cities in the order you want to visit them, then close the loop.
+		Distances are measured in a straight line ("as the crow flies"), not
+		along roads.
 	</p>
 
 	<details class="learn-details">
@@ -671,7 +728,8 @@
 					</button>
 				{/if}
 				{#if phase === 'playing'}
-					<button class="btn sm btn-ghost" onclick={() => (phase = 'idle')}>New Game</button>
+					<button class="btn sm btn-ghost" onclick={() => (phase = 'idle')}>Settings</button>
+					<button class="btn sm btn-ghost" onclick={startGame}>New Game</button>
 					<button class="btn sm btn-ghost" onclick={undoLast} disabled={path.length === 0}>Undo</button>
 					<button class="btn sm btn-ghost" onclick={() => { path = []; }} disabled={path.length === 0}>Clear</button>
 					{#if allVisited}
@@ -679,7 +737,8 @@
 					{/if}
 				{:else}
 					<button class="btn sm btn-ghost" onclick={() => (phase = 'idle')}>Settings</button>
-					<button class="btn sm" onclick={startGame}>Play Again</button>
+					<button class="btn sm btn-ghost" onclick={retryGame}>Retry</button>
+					<button class="btn sm" onclick={startGame}>New Game</button>
 				{/if}
 			</div>
 		</div>
@@ -730,6 +789,21 @@
 							stroke="var(--color-accent)" stroke-width={2 * PX} stroke-opacity="0.7"
 							stroke-dasharray={phase === 'done' ? undefined : `${7 * PX} ${4 * PX}`}
 							stroke-linecap="round"/>
+					{/if}
+
+					<!-- user edges not in the optimal tour (detours) -->
+					{#if showOptimal}
+						{#each detourSegs as seg}
+							<line x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
+								stroke="#f87171" stroke-width={0.75 * PX} stroke-opacity="0.75"
+								stroke-linecap="round"/>
+						{/each}
+						{#each detourMarks as m}
+							<path d="M{m.x - 3 * PX} {m.y - 3 * PX} L{m.x + 3 * PX} {m.y + 3 * PX}
+								M{m.x - 3 * PX} {m.y + 3 * PX} L{m.x + 3 * PX} {m.y - 3 * PX}"
+								stroke="#f87171" stroke-width={1 * PX} stroke-opacity="0.75"
+								stroke-linecap="round"/>
+						{/each}
 					{/if}
 
 					<!-- preview segment -->
@@ -831,7 +905,8 @@
 					{#each path as cityIdx, pos}
 						<div class="city-item route-item"
 							class:is-dragging={drag?.kind === 'route' && drag.pathPos === pos}
-							draggable="true"
+							class:route-locked={phase !== 'playing'}
+							draggable={phase === 'playing'}
 							ondragstart={(e) => onDragStart(e, { kind: 'route', pathPos: pos })}
 							ondragend={onDragEnd}
 							role="button" tabindex="0"
@@ -839,17 +914,19 @@
 							<span class="drag-handle" aria-hidden="true">⠿</span>
 							<span class="route-pos" class:pos-start={pos === 0}>{pos + 1}</span>
 							<span class="city-lbl">{gameCities[cityIdx].name}<span class="city-st">, {gameCities[cityIdx].state}</span></span>
-							<div class="reorder-btns">
-								<button class="reorder-btn" aria-label="Move up" disabled={pos === 0}
-									onclick={(e) => { e.stopPropagation(); const p = [...path]; [p[pos-1], p[pos]] = [p[pos], p[pos-1]]; path = p; }}
-								>▲</button>
-								<button class="reorder-btn" aria-label="Move down" disabled={pos === path.length - 1}
-									onclick={(e) => { e.stopPropagation(); const p = [...path]; [p[pos], p[pos+1]] = [p[pos+1], p[pos]]; path = p; }}
-								>▼</button>
-							</div>
-							<button class="remove-btn" aria-label="Remove"
-								onclick={(e) => { e.stopPropagation(); path = path.filter((_, k) => k !== pos); }}
-							>×</button>
+							{#if phase === 'playing'}
+								<div class="reorder-btns">
+									<button class="reorder-btn" aria-label="Move up" disabled={pos === 0}
+										onclick={(e) => { e.stopPropagation(); const p = [...path]; [p[pos-1], p[pos]] = [p[pos], p[pos-1]]; path = p; }}
+									>▲</button>
+									<button class="reorder-btn" aria-label="Move down" disabled={pos === path.length - 1}
+										onclick={(e) => { e.stopPropagation(); const p = [...path]; [p[pos], p[pos+1]] = [p[pos+1], p[pos]]; path = p; }}
+									>▼</button>
+								</div>
+								<button class="remove-btn" aria-label="Remove"
+									onclick={(e) => { e.stopPropagation(); path = path.filter((_, k) => k !== pos); }}
+								>×</button>
+							{/if}
 						</div>
 						<div class="drop-zone" class:dz-active={dropTarget === pos + 1}
 							ondragover={(e) => onZoneOver(e, pos + 1)}
@@ -891,6 +968,7 @@
 										{:else}
 											<td class="mcell"
 												class:mcell-path={pathEdges.has(`${i},${j}`)}
+												class:mcell-detour={showOptimal && pathEdges.has(`${i},${j}`) && !optimalEdges.has(`${i},${j}`)}
 												style="background:{cellBg(distMatrix[i][j])}"
 											>{Math.round(distMatrix[i][j])}</td>
 										{/if}
@@ -1095,6 +1173,10 @@
 		color: #fff;
 	}
 
+	.mcell-detour {
+		outline-color: #f87171;
+	}
+
 	/* ── buttons ── */
 	.btn {
 		padding: 0.7rem 1.4rem;
@@ -1184,6 +1266,10 @@
 	.city-item:hover { background: var(--color-surface-2); }
 	.city-item:active { cursor: grabbing; }
 	.city-item.is-dragging { opacity: 0.3; }
+
+	.city-item.route-locked,
+	.city-item.route-locked:active { cursor: default; }
+	.city-item.route-locked .drag-handle { opacity: 0.2; }
 
 	.drag-handle {
 		color: var(--color-text-muted);
