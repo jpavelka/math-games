@@ -45,7 +45,7 @@
 	let thinking          = $state(false);
 	let compMovePreview   = $state<{ pileIdx: number; newSize: number } | null>(null);
 	let pendingMove       = $state<{ pileIdx: number; newSize: number } | null>(null);
-	let selectedPile  = $state(-1);
+	let hoverPile   = $state(-1);
 	let hoverObj    = $state(-1);
 
 	let showBinary = $state(false);
@@ -124,8 +124,8 @@
 		winner          = null;
 		thinking        = false;
 		compMovePreview = null;
-		selectedPile    = -1;
-		hoverObj      = -1;
+		hoverPile       = -1;
+		hoverObj        = -1;
 		phase           = 'playing';
 	}
 
@@ -136,17 +136,17 @@
 		winner          = null;
 		thinking        = false;
 		compMovePreview = null;
-		selectedPile    = -1;
-		hoverObj      = -1;
+		hoverPile       = -1;
+		hoverObj        = -1;
 		phase           = 'playing';
 	}
 
 	// Clicking object at oIdx keeps 0..oIdx-1, removes oIdx..end.
 	function takeObjects(pileIdx: number, oIdx: number) {
 		if (phase !== 'playing') return;
-		piles        = piles.map((p, i) => i === pileIdx ? oIdx : p);
-		selectedPile = -1;
-		hoverObj   = -1;
+		piles     = piles.map((p, i) => i === pileIdx ? oIdx : p);
+		hoverPile = -1;
+		hoverObj  = -1;
 		if (piles.every(p => p === 0)) {
 			winner = variant === 'normal' ? currentPlayer : (currentPlayer === 1 ? 2 : 1);
 			phase  = 'won';
@@ -155,25 +155,17 @@
 		}
 	}
 
-	function clearSelection() { selectedPile = -1; hoverObj = -1; }
-
-	// Toggling a pile inserts/removes the prompt row, changing document height.
-	// Pin the scroll position across the update so the viewport can't drift
-	// (browser scroll-anchoring would otherwise carry the selected pile upward).
-	async function togglePile(pIdx: number) {
+	// Clicking an object stages the move for confirmation directly — the clicked
+	// object is the left-most one taken. Inserting the confirm row changes the
+	// document height, so pin the scroll position across the update to stop the
+	// viewport drifting under the pointer.
+	async function requestMove(pIdx: number, newSize: number) {
 		const y = window.scrollY;
-		pendingMove  = null; // switching/toggling piles drops any pending confirmation
-		selectedPile = selectedPile === pIdx ? -1 : pIdx;
-		hoverObj = -1;
+		hoverPile   = -1;
+		hoverObj    = -1;
+		pendingMove = { pileIdx: pIdx, newSize };
 		await tick();
 		window.scrollTo(0, y);
-	}
-
-	// Second click stages a move for confirmation — keep the pile selected so
-	// Cancel can restore the count buttons.
-	function requestMove(pIdx: number, newSize: number) {
-		hoverObj  = -1;
-		pendingMove = { pileIdx: pIdx, newSize };
 	}
 
 	function confirmMove() {
@@ -184,7 +176,7 @@
 	}
 
 	function cancelMove() {
-		pendingMove = null; // selectedPile stays set → count buttons reappear
+		pendingMove = null;
 	}
 
 	function toBits(n: number, bits: number): number[] {
@@ -341,10 +333,10 @@
 				<div class="turn-row">
 					{#if opponent === 'computer'}
 						<span class="you-badge">Your</span>
-						<span class="turn-hint">&nbsp;turn — tap a pile, then tap an object to remove it and everything to its right</span>
+						<span class="turn-hint">&nbsp;turn — tap an object to remove it and everything to its right</span>
 					{:else}
 						<span class="player-badge p{currentPlayer}">Player {currentPlayer}</span>
-						<span class="turn-hint">'s turn — tap a pile, then tap an object to remove it and everything to its right</span>
+						<span class="turn-hint">'s turn — tap an object to remove it and everything to its right</span>
 					{/if}
 				</div>
 			{/if}
@@ -415,50 +407,35 @@
 		{/if}
 
 		<!-- Piles -->
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="piles-area" class:inactive={isComputersTurn}>
 			{#each piles as pileSize, pIdx}
-				{@const isSelected = selectedPile === pIdx}
-				{@const disabled   = phase !== 'playing' || isComputersTurn || thinking || pendingMove !== null}
-				{@const rowActive  = phase === 'playing' && !isComputersTurn && !thinking}
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<div
-					class="pile-row"
-					class:selected={isSelected}
-					class:selectable={rowActive && pileSize > 0}
-					onclick={() => { if (rowActive && pileSize > 0) togglePile(pIdx); }}
-				>
+				{@const disabled      = phase !== 'playing' || isComputersTurn || thinking}
+				{@const objSelectable = !disabled}
+				<div class="pile-row">
 					<span class="pile-label">Pile {pIdx + 1}</span>
 					<div class="objects">
 						{#if pileSize === 0}
 							<span class="pile-empty">empty</span>
 						{:else}
-							{@const objSelectable = isSelected && phase === 'playing' && !isComputersTurn && !thinking}
 							{#each {length: pileSize} as _, oIdx}
-								{@const removing    = (objSelectable && hoverObj >= 0 && oIdx >= hoverObj) || (pendingMove !== null && pendingMove.pileIdx === pIdx && oIdx >= pendingMove.newSize)}
+								{@const removing    = (objSelectable && hoverPile === pIdx && hoverObj >= 0 && oIdx >= hoverObj) || (pendingMove !== null && pendingMove.pileIdx === pIdx && oIdx >= pendingMove.newSize)}
 								{@const pulseRemove = compMovePreview !== null && compMovePreview.pileIdx === pIdx && oIdx >= compMovePreview.newSize}
 								<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 								<span
 									class="obj"
 									class:removing
 									class:pulse-remove={pulseRemove}
-									class:disabled={disabled && !objSelectable}
+									class:disabled={disabled}
 									class:obj-clickable={objSelectable}
-									onmouseenter={() => { if (objSelectable) hoverObj = oIdx; }}
-									onmouseleave={() => { if (objSelectable) hoverObj = -1; }}
-									onclick={(e) => { if (objSelectable) { e.stopPropagation(); requestMove(pIdx, oIdx); } }}
+									onmouseenter={() => { if (objSelectable) { hoverPile = pIdx; hoverObj = oIdx; } }}
+									onmouseleave={() => { if (objSelectable) { hoverPile = -1; hoverObj = -1; } }}
+									onclick={() => { if (objSelectable) requestMove(pIdx, oIdx); }}
 								></span>
 							{/each}
 						{/if}
 					</div>
 					<span class="pile-count">{pileSize}</span>
 				</div>
-				{#if isSelected && pileSize > 0 && !disabled}
-					<div class="select-prompt">
-						<span class="select-arrow">↑</span>
-						Pile {pIdx + 1} selected — tap an object to remove it and everything to its right
-					</div>
-				{/if}
 				{#if pendingMove !== null && pendingMove.pileIdx === pIdx}
 					<div class="confirm-row">
 						<span class="confirm-label">Remove {pileSize - pendingMove.newSize} object{pileSize - pendingMove.newSize === 1 ? '' : 's'} from Pile {pIdx + 1}?</span>
@@ -479,8 +456,8 @@
 </div>
 
 <style>
-	/* Stop the browser from scroll-anchoring the page when selecting a pile
-	   inserts the prompt row (which would scroll the viewport down). */
+	/* Stop the browser from scroll-anchoring the page when picking an object
+	   inserts the confirm row (which would scroll the viewport down). */
 	:global(body) { overflow-anchor: none; }
 
 	.page { max-width: 520px; margin: 0 auto; }
@@ -769,28 +746,6 @@
 	.pile-empty { font-size: 0.78rem; color: var(--color-text-muted); font-style: italic; }
 
 	.pile-count { font-size: 0.78rem; font-weight: 600; color: var(--color-text-muted); min-width: 1.5ch; text-align: right; font-variant-numeric: tabular-nums; }
-
-	.pile-row.selectable { cursor: pointer; }
-	.pile-row.selectable:hover { background: var(--color-surface-2); border-radius: var(--radius-sm); }
-	.pile-row.selected {
-		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-		border-radius: var(--radius-sm);
-		box-shadow: inset 0 0 0 1.5px var(--color-accent);
-	}
-	.pile-row.selected .pile-label { color: var(--color-accent); }
-
-	/* ── Selection prompt ── */
-	.select-prompt {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		font-size: 0.78rem;
-		font-weight: 600;
-		color: var(--color-accent);
-		padding: 0.1rem 0.5rem 0.2rem 4.15rem;
-	}
-
-	.select-arrow { font-weight: 800; }
 
 	/* ── Confirm / Cancel row ── */
 	.confirm-row {
