@@ -1,8 +1,14 @@
 <script lang="ts">
 	import { games } from '$lib/games';
 	import { base } from '$app/paths';
+	import { goto } from '$app/navigation';
 
 	let query = $state('');
+
+	function playRandom() {
+		const game = games[Math.floor(Math.random() * games.length)];
+		goto(`${base}${game.route}`);
+	}
 
 	// Hand-picked hues for known categories; any unknown category falls back to a
 	// hash-derived hue from the overflow palette so new categories just work.
@@ -49,14 +55,17 @@
 	<p class="subtitle">Sharpen your mind with interactive math challenges</p>
 </section>
 
-<div class="search-wrapper">
-	<span class="search-icon">⌕</span>
-	<input
-		type="search"
-		placeholder="Search games by name, category…"
-		bind:value={query}
-		aria-label="Search games"
-	/>
+<div class="controls">
+	<div class="search-wrapper">
+		<span class="search-icon">⌕</span>
+		<input
+			type="search"
+			placeholder="Search games by name, category…"
+			bind:value={query}
+			aria-label="Search games"
+		/>
+	</div>
+	<button type="button" class="random-btn" onclick={playRandom}>🎲 Random Game</button>
 </div>
 
 {#if filtered.length === 0}
@@ -98,10 +107,47 @@
 		font-size: 1.05rem;
 	}
 
+	.controls {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		margin: 2rem auto 3rem;
+	}
+
 	.search-wrapper {
 		position: relative;
+		flex: 1 1 auto;
 		max-width: 480px;
-		margin: 2rem auto 3rem;
+	}
+
+	.random-btn {
+		flex: 0 0 auto;
+		padding: 0.75rem 1.25rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		color: var(--color-text);
+		font-size: 1rem;
+		font-weight: 600;
+		cursor: pointer;
+		white-space: nowrap;
+		transition:
+			border-color 0.2s,
+			transform 0.15s,
+			box-shadow 0.2s;
+	}
+
+	.random-btn:hover {
+		border-color: var(--color-accent);
+		transform: translateY(-2px);
+		box-shadow: 0 8px 24px rgba(108, 139, 239, 0.12);
+	}
+
+	.random-btn:focus-visible {
+		outline: none;
+		border-color: var(--color-accent);
 	}
 
 	.search-icon {
