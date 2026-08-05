@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { generatePuzzle, evaluateStandard, type Op } from '$lib/paren-placer';
+	import { generatePuzzle, evaluateStandard, reductionSteps, tokenViews, type Op, type FlatToken, type TokenView } from '$lib/paren-placer';
 
 	type Phase = 'idle' | 'playing' | 'done';
 
@@ -21,10 +21,14 @@
 
 	let firstSelectedIndex = $state<number | null>(null);
 
+	// Revealing the working is opt-in; the choice sticks for the rest of the game
+	let showSteps = $state(false);
+
 	function startGame() {
 		phase = 'playing';
 		score = 0;
 		questionIndex = 0;
+		showSteps = false;
 		nextPuzzle();
 	}
 
@@ -119,11 +123,11 @@
 		return result;
 	});
 
-	function evaluateUserExpression(): number {
+	const flatTokens = $derived.by(() => {
 		const tokens = puzzle.tokens;
 		const numCount = tokens.filter(t => typeof t === 'number').length;
-		
-		let flat: (number | Op | '(' | ')')[] = [];
+
+		let flat: FlatToken[] = [];
 		const openParens = new Array(numCount).fill(0);
 		const closeParens = new Array(numCount).fill(0);
 		for (const [start, end] of userParens) {
@@ -143,15 +147,18 @@
 				flat.push(t as Op);
 			}
 		}
+		return flat;
+	});
 
+	function evaluateUserExpression(): number {
 		try {
-			return parseAndEval(flat);
+			return parseAndEval(flatTokens);
 		} catch (e) {
 			return NaN;
 		}
 	}
 
-	function parseAndEval(tokens: (number | Op | '(' | ')')[]): number {
+	function parseAndEval(tokens: FlatToken[]): number {
 		let i = 0;
 		function parseExpr(): number {
 			let ops: (number | Op)[] = [];
@@ -174,6 +181,71 @@
 	}
 
 	const currentUserValue = $derived(evaluateUserExpression());
+	// The starting equation leads the list, so the reduction reads top to bottom.
+	// `sources` are indices into the row above; `result` indexes this row.
+	type StepRow = { views: TokenView[]; sources: number[] | null; result: number };
+	const steps = $derived.by(() => {
+		const reduced = reductionSteps(flatTokens);
+		if (reduced.length === 0) return [] as StepRow[];
+		return [
+			{ views: tokenViews(flatTokens), sources: null, result: -1 },
+			...reduced.map((s) => ({
+				views: tokenViews(s.tokens),
+				sources: [s.left, s.right],
+				result: s.result
+			}))
+		];
+	});
+
+	let stepsEl = $state<HTMLElement | null>(null);
+	let connectors = $state<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
+
+	// Connect each pair of operands to the value they collapsed into on the next row.
+	function measureConnectors() {
+		if (!stepsEl || steps.length === 0) {
+			connectors = [];
+			return;
+		}
+		const base = stepsEl.getBoundingClientRect();
+		const at = (row: number, index: number) =>
+			stepsEl!.querySelector<HTMLElement>(`[data-row="${row}"][data-tok="${index}"]`);
+
+		const lines: { x1: number; y1: number; x2: number; y2: number }[] = [];
+		for (let r = 1; r < steps.length; r++) {
+			const { sources, result } = steps[r];
+			if (!sources) continue;
+			const target = at(r, result);
+			if (!target) continue;
+			const tb = target.getBoundingClientRect();
+			const x2 = tb.left + tb.width / 2 - base.left;
+			const y2 = tb.top - base.top;
+			for (const index of sources) {
+				const source = at(r - 1, index);
+				if (!source) continue;
+				const sb = source.getBoundingClientRect();
+				lines.push({
+					x1: sb.left + sb.width / 2 - base.left,
+					y1: sb.bottom - base.top,
+					x2,
+					y2
+				});
+			}
+		}
+		connectors = lines;
+	}
+
+	$effect(() => {
+		steps; // re-measure whenever the rows change
+		measureConnectors();
+	});
+
+	// Wrapping and font-size changes move the tokens without changing the rows
+	$effect(() => {
+		if (!stepsEl) return;
+		const observer = new ResizeObserver(() => measureConnectors());
+		observer.observe(stepsEl);
+		return () => observer.disconnect();
+	});
 
 	function submit() {
 		if (currentUserValue === puzzle.target) {
@@ -295,6 +367,39 @@
 				</span>
 			</div>
 
+			{#if steps.length > 0}
+				<button
+					class="steps-toggle"
+					aria-expanded={showSteps}
+					onclick={() => (showSteps = !showSteps)}
+				>
+					{showSteps ? 'Hide steps' : 'Show steps'}
+				</button>
+			{/if}
+
+			{#if steps.length > 0 && showSteps}
+				<div class="steps" bind:this={stepsEl}>
+					<svg class="connectors" aria-hidden="true">
+						{#each connectors as line}
+							<line x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} />
+						{/each}
+					</svg>
+					{#each steps as step, r}
+						<div class="step">
+							{#each step.views as view, i}
+								<span
+									class="step-tok {view.kind}"
+									class:spaced={view.spaceBefore}
+									class:result={r > 0 && i === step.result}
+									data-row={r}
+									data-tok={i}>{view.text}</span
+								>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			{/if}
+
 			<div class="actions">
 				<button class="btn secondary" style="margin-right: auto;" onclick={restartToSetup}>Restart</button>
 				<button 
@@ -378,8 +483,70 @@
 		gap: 0.5rem;
 		font-size: 1.5rem;
 		font-weight: 700;
-		margin-bottom: 2rem;
+		margin-bottom: 1rem;
 		flex-wrap: wrap;
+	}
+
+	.steps-toggle {
+		background: none;
+		border: none;
+		color: var(--color-text-muted);
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+		padding: 0.25rem 0.5rem;
+		margin-bottom: 1.25rem;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.steps-toggle:hover {
+		color: var(--color-accent);
+	}
+
+	.steps {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.9rem;
+		margin-bottom: 2rem;
+		color: var(--color-text-muted);
+		font-size: 1.15rem;
+		font-weight: 600;
+	}
+
+	.step {
+		display: flex;
+		align-items: baseline;
+	}
+
+	.step-tok.spaced {
+		margin-left: 0.35rem;
+	}
+
+	.step-tok.paren {
+		color: var(--color-accent);
+	}
+
+	.step-tok.result {
+		color: var(--color-text);
+	}
+
+	.connectors {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		overflow: visible;
+		pointer-events: none;
+	}
+
+	.connectors line {
+		stroke: var(--color-accent);
+		stroke-width: 1.5;
+		stroke-linecap: round;
+		opacity: 0.5;
 	}
 
 	.token.num {
